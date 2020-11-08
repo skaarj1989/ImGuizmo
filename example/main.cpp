@@ -234,27 +234,25 @@ int main(int argc, char *argv[]) {
 
   ImGui_ImplGlfw_InitForOpenGL(window, true);
 
-  const char *glsl_version = "#version 130";
+  const char *glsl_version{ "#version 130" };
   ImGui_ImplOpenGL3_Init(glsl_version);
 
   int lastUsing = 0;
 
-  glm::mat4 cameraView{ 1.0f };
-  glm::mat4 cameraProjection{ 1.0f };
+  static glm::mat4 cameraView{ 1.0f };
+  static glm::mat4 cameraProjection{ 1.0f };
 
   constexpr auto kMaxNumGizmos = 4;
   glm::mat4 modelMatrices[kMaxNumGizmos] = {
-    glm::translate(kIdentityMatrix, glm::vec3{ 0.0f, 0.0f, 0.0f }),
-    glm::translate(kIdentityMatrix, glm::vec3{ 2.0f, 0.0f, 0.0f }),
-    glm::translate(kIdentityMatrix, glm::vec3{ 2.0f, 0.0f, 2.0f }),
-    glm::translate(kIdentityMatrix, glm::vec3{ 0.0f, 0.0f, 2.0f }),
+    glm::translate(kIdentityMatrix, { 0.0f, 0.0f, 0.0f }),
+    glm::translate(kIdentityMatrix, { 2.0f, 0.0f, 0.0f }),
+    glm::translate(kIdentityMatrix, { 2.0f, 0.0f, 2.0f }),
+    glm::translate(kIdentityMatrix, { 0.0f, 0.0f, 2.0f }),
   };
 
-  bool isPerspective = true;
   float viewWidth = 10.0f; // for orthographic
   float camYAngle = 165.0f / 180.0f * 3.14159f;
   float camXAngle = 32.0f / 180.0f * 3.14159f;
-  float camDistance = 8.0f;
 
   float fov = 27.0f;
 
@@ -270,10 +268,12 @@ int main(int argc, char *argv[]) {
     ImGui::NewFrame();
 
     if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+
+    static bool isPerspective{ true };
     if (isPerspective) {
 #if 0
       cameraProjection = glm::perspective(
-        glm::radians(fov), io.DisplaySize.x / io.DisplaySize.y, 0.1f, 100.0f);
+        glm::radians(60.0f), io.DisplaySize.x / io.DisplaySize.y, 0.1f, 100.0f);
 #else
       Perspective(fov, io.DisplaySize.x / io.DisplaySize.y, 0.1f, 100.f,
                   glm::value_ptr(cameraProjection));
@@ -295,7 +295,6 @@ int main(int argc, char *argv[]) {
       ImGuizmo::Enable(gizmoEnabled);
 
     ImGui::Text("Camera");
-    static bool viewDirty{ false };
     if (ImGui::RadioButton("Perspective", isPerspective)) isPerspective = true;
     ImGui::SameLine();
     if (ImGui::RadioButton("Orthographic", !isPerspective))
@@ -305,13 +304,15 @@ int main(int argc, char *argv[]) {
     } else {
       ImGui::SliderFloat("Ortho width", &viewWidth, 1, 20);
     }
-    viewDirty |= ImGui::SliderFloat("Distance", &camDistance, 1.0f, 100.f);
-
+    static float camDistance{ 8.0f };
+    bool viewDirty = ImGui::InputFloat("Distance", &camDistance, 1.0f);
     static int gizmoCount{ 1 };
     ImGui::SliderInt("Gizmo count", &gizmoCount, 1, kMaxNumGizmos);
 
     static bool firstFrame{ true };
     if (viewDirty || firstFrame) {
+      firstFrame = false;
+      
       const glm::vec3 eye{
         glm::cos(camYAngle) * glm::cos(camXAngle) * camDistance,
         glm::sin(camXAngle) * camDistance,
@@ -320,8 +321,6 @@ int main(int argc, char *argv[]) {
       const glm::vec3 at{ 0.0f, 0.0f, 0.0f };
       const glm::vec3 up{ 0.0f, 1.0f, 0.0f };
       cameraView = glm::lookAt(eye, at, up);
-
-      firstFrame = false;
     }
 
     ImGui::Text("X: %f Y: %f", io.MousePos.x, io.MousePos.y);
@@ -352,7 +351,6 @@ int main(int argc, char *argv[]) {
       if (ImGuizmo::IsUsing()) lastUsing = matId;
     }
     ImGui::End();
-
 
 #if PROFILE_CODE
     auto finish = std::chrono::high_resolution_clock::now();
@@ -390,6 +388,8 @@ int main(int argc, char *argv[]) {
       glm::vec2{ kViewSize }, 0x10101010);
 
     ImGui::Render();
+
+    // ---
 
     int displayWidth, displayHeight;
     glfwGetFramebufferSize(window, &displayWidth, &displayHeight);

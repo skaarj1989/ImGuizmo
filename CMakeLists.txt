@@ -30,11 +30,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(LINUX YES)
 endif()
 
-include(GNUInstallDirs)
-
 set(glm_DIR "${CMAKE_SOURCE_DIR}/extern/glm/cmake/glm")
 find_package(glm REQUIRED)
-
 add_subdirectory(extern)
 
 add_library(ImGuizmo )
@@ -48,3 +45,5 @@ target_link_libraries(ImGuizmo
 )
 
 add_subdirectory(example)
+
+include(GNUInstallDirs)
