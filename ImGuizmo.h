@@ -123,6 +123,7 @@ IMGUI_API void DecomposeMatrix(const float *matrix, float *t, float *r,
 IMGUI_API void RecomposeMatrix(const float *t, const float *r, const float *s,
                                float *matrix);
 
+IMGUI_API void SetViewport(const ImVec2 &position, const ImVec2 &size);
 IMGUI_API void SetViewport(float x, float y, float width, float height);
 
 IMGUI_API void SetOrthographic(bool isOrthographic);

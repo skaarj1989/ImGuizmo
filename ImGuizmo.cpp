@@ -99,6 +99,7 @@ struct ImGuizmoContext {
   ImDrawList *drawList{ nullptr };
 
   ImGuizmoMode_ mode{ ImGuizmoMode_Local };
+  ImGuizmoOperation_ operation{ ImGuizmoOperation_(-1) };
 
   struct {
     glm::mat4 viewMatrix;
@@ -189,7 +190,7 @@ struct ImGuizmoContext {
 
   int actualID{ -1 };
   int editingID{ -1 };
-  ImGuizmoOperation_ operation{ ImGuizmoOperation_(-1) };
+
 
   ImGuizmoStyle style;
 };
@@ -1844,16 +1845,20 @@ void RecomposeMatrix(const float *translation, const float *rotation,
 #endif
 }
 
-void SetViewport(float x, float y, float width, float height) {
-  gContext.viewport.x = x;
-  gContext.viewport.y = y;
-  gContext.viewport.width = width;
-  gContext.viewport.height = height;
+void SetViewport(const ImVec2 &position, const ImVec2 &size) {
+  gContext.viewport.x = position.x;
+  gContext.viewport.y = position.y;
+  gContext.viewport.width = size.x;
+  gContext.viewport.height = size.y;
 
   gContext.mXMax = gContext.viewport.x + gContext.viewport.width;
   gContext.mYMax = gContext.viewport.y + gContext.viewport.height;
 
-  gContext.aspectRatio = width / height;
+  gContext.aspectRatio = size.x / size.y;
+}
+
+void SetViewport(float x, float y, float width, float height) {
+  SetViewport({ x, y }, { width, height });
 }
 
 void SetOrthographic(bool isOrthographic) { gContext.isOrtho = isOrthographic; }
@@ -1948,17 +1953,19 @@ void PrintContext() {
 }
 
 void BeginFrame() {
-  const ImGuiIO &io{ ImGui::GetIO() };
-
-  PrintContext();
-
+  ImVec2 position, size;
 #ifdef IMGUI_HAS_VIEWPORT
-  ImGui::SetNextWindowSize(ImGui::GetMainViewport()->Size);
-  ImGui::SetNextWindowPos(ImGui::GetMainViewport()->Pos);
+  position = ImGui::GetMainViewport()->Pos;
+  size = ImGui::GetMainViewport()->Size;
 #else
-  ImGui::SetNextWindowSize(io.DisplaySize);
-  ImGui::SetNextWindowPos(ImVec2(0, 0));
+  const ImGuiIO &io{ ImGui::GetIO() };
+  position = ImVec2{ 0, 0 };
+  size = io.DisplaySize;
 #endif
+  //position = ImVec2{ 0, 0 };
+
+  ImGui::SetNextWindowPos(position);
+  ImGui::SetNextWindowSize(size);
 
   ImGui::PushStyleColor(ImGuiCol_WindowBg, 0);
   ImGui::PushStyleColor(ImGuiCol_Border, 0);
@@ -1975,6 +1982,8 @@ void BeginFrame() {
   ImGui::End();
   ImGui::PopStyleVar();
   ImGui::PopStyleColor(2);
+
+  PrintContext();
 }
 
 bool IsUsing() { return gContext.inUse || gContext.bounds.inUse; }
@@ -2259,6 +2268,9 @@ void DrawGrid(const float *view, const float *projection, const float *model,
  */
 void ViewManipulate(float *view, float length, ImVec2 position, ImVec2 size,
                     ImU32 backgroundColor) {
+
+  if (gContext.inUse) return;
+
   const ImGuiIO &io{ ImGui::GetIO() };
 
   static bool isDraging{ false };

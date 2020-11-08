@@ -1,18 +1,36 @@
-﻿#include "imgui.h"
-#define IMAPP_IMPL
-#include "ImApp.h"
+﻿//#define PROFILE_CODE 1
+
+#include <array>
+#if PROFILE_CODE
+#  include <algorithm>
+#  include <chrono>
+#  include <execution>
+#endif
+
+#include "glad/glad.h"
+#include "GLFW/glfw3.h"
+
+#include "imgui.h"
+#include "imgui_internal.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 #include "ImGuizmo.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
-#include <array>
-#include <chrono>
-#include <algorithm>
-#include <execution>
-
-#define PROFILE_CODE 1
-
 constexpr auto kIdentityMatrix = glm::mat4{ 1.0f };
+
+void GetViewport(glm::vec2 &position, glm::vec2 &size) {
+#ifdef IMGUI_HAS_VIEWPORT
+  position = ImGui::GetMainViewport()->Pos;
+  size = ImGui::GetMainViewport()->Size;
+#else
+  const ImGuiIO &io{ ImGui::GetIO() };
+  position = glm::vec2{ 0, 0 };
+  size = io.DisplaySize;
+#endif
+}
 
 void Frustum(float left, float right, float bottom, float top, float znear,
              float zfar, float *m16) {
@@ -153,8 +171,10 @@ void EditTransform(const float *view, float *projection, float *model,
       ImGui::PopID();
     }
   }
-  const ImGuiIO &io{ ImGui::GetIO() };
-  ImGuizmo::SetViewport(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+
+  glm::vec2 position, size;
+  GetViewport(position, size);
+  ImGuizmo::SetViewport(position.x, position.y, size.x, size.y);
   ImGuizmo::Manipulate(
     view, projection, currentGizmoOperation, currentGizmoMode, model, nullptr,
     useSnap ? &snap[0] : nullptr, boundSizing ? bounds : nullptr,
@@ -166,47 +186,90 @@ int main(int argc, char *argv[]) {
   _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
   _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 
-  ImApp::ImApp imApp;
-  ImApp::Config config;
-  config.mWidth = 1280;
-  config.mHeight = 720;
-  // config.mFullscreen = true;
-  imApp.Init(config);
-
-  int lastUsing = 0;
-
-  glm::mat4 modelMatrices[] = {
-    glm::translate(kIdentityMatrix, glm::vec3{ 0.0f, 0.0f, 0.0f }),
-    glm::translate(kIdentityMatrix, glm::vec3{ 2.0f, 0.0f, 0.0f }),
-    glm::translate(kIdentityMatrix, glm::vec3{ 2.0f, 0.0f, 2.0f }),
-    glm::translate(kIdentityMatrix, glm::vec3{ 0.0f, 0.0f, 2.0f })
-  };
-
-  glm::mat4 cameraView{ 1.0f };
-  glm::mat4 cameraProjection{ 1.0f };
-
-  // Camera projection
-  bool firstFrame = true;
-  bool isPerspective = true;
-  float viewWidth = 10.f; // for orthographic
-  float camYAngle = 165.f / 180.f * 3.14159f;
-  float camXAngle = 32.f / 180.f * 3.14159f;
-  float camDistance = 8.f;
-  int gizmoCount = 1;
-
-  float fov = 27.0f;
-
 #if PROFILE_CODE
   constexpr auto kNumSamples = 1000;
   std::array<long long, kNumSamples> timeSamples{};
   int currentSampleId{ 0 };
 #endif
 
-  while (!imApp.Done()) {
-    imApp.NewFrame();
-    ImGui::ShowDemoWindow();
+  if (!glfwInit()) return 1;
 
-    const ImGuiIO &io = ImGui::GetIO();
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+
+  GLFWwindow *window{ glfwCreateWindow(1280, 720, "ImGuizmo example", nullptr,
+                                       nullptr) };
+  if (window == nullptr) return 1;
+  glfwMakeContextCurrent(window);
+  glfwSwapInterval(1);
+
+  if (!gladLoadGL()) {
+    fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+    return 1;
+  }
+
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO &io{ ImGui::GetIO() };
+  io.ConfigFlags |=
+    ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+  // io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad
+
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   // Enable Docking
+  io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable Multi-Viewport /
+
+  // io.ConfigViewportsNoAutoMerge = true;
+  // io.ConfigViewportsNoTaskBarIcon = true;
+
+  ImGui::StyleColorsDark();
+  // ImGui::StyleColorsClassic();
+
+  // When viewports are enabled we tweak WindowRounding/WindowBg so platform
+  // windows can look identical to regular ones.
+  ImGuiStyle &style{ ImGui::GetStyle() };
+  if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+    style.WindowRounding = 0.0f;
+    style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+  }
+
+  ImGui_ImplGlfw_InitForOpenGL(window, true);
+
+  const char *glsl_version = "#version 130";
+  ImGui_ImplOpenGL3_Init(glsl_version);
+
+  int lastUsing = 0;
+
+  glm::mat4 cameraView{ 1.0f };
+  glm::mat4 cameraProjection{ 1.0f };
+
+  constexpr auto kMaxNumGizmos = 4;
+  glm::mat4 modelMatrices[kMaxNumGizmos] = {
+    glm::translate(kIdentityMatrix, glm::vec3{ 0.0f, 0.0f, 0.0f }),
+    glm::translate(kIdentityMatrix, glm::vec3{ 2.0f, 0.0f, 0.0f }),
+    glm::translate(kIdentityMatrix, glm::vec3{ 2.0f, 0.0f, 2.0f }),
+    glm::translate(kIdentityMatrix, glm::vec3{ 0.0f, 0.0f, 2.0f }),
+  };
+
+  bool isPerspective = true;
+  float viewWidth = 10.0f; // for orthographic
+  float camYAngle = 165.0f / 180.0f * 3.14159f;
+  float camXAngle = 32.0f / 180.0f * 3.14159f;
+  float camDistance = 8.0f;
+
+  float fov = 27.0f;
+
+  bool show_demo_window = true;
+  //bool show_another_window = false;
+  ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+  while (!glfwWindowShouldClose(window)) {
+    glfwPollEvents();
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
     if (isPerspective) {
 #if 0
       cameraProjection = glm::perspective(
@@ -232,26 +295,32 @@ int main(int argc, char *argv[]) {
       ImGuizmo::Enable(gizmoEnabled);
 
     ImGui::Text("Camera");
-    bool viewDirty = false;
+    static bool viewDirty{ false };
     if (ImGui::RadioButton("Perspective", isPerspective)) isPerspective = true;
     ImGui::SameLine();
     if (ImGui::RadioButton("Orthographic", !isPerspective))
       isPerspective = false;
     if (isPerspective) {
-      ImGui::SliderFloat("Fov", &fov, 20.f, 110.f);
+      ImGui::SliderFloat("FOV", &fov, 20.0f, 110.f);
     } else {
       ImGui::SliderFloat("Ortho width", &viewWidth, 1, 20);
     }
-    viewDirty |= ImGui::SliderFloat("Distance", &camDistance, 1.f, 10.f);
-    ImGui::SliderInt("Gizmo count", &gizmoCount, 1, 4);
+    viewDirty |= ImGui::SliderFloat("Distance", &camDistance, 1.0f, 100.f);
 
+    static int gizmoCount{ 1 };
+    ImGui::SliderInt("Gizmo count", &gizmoCount, 1, kMaxNumGizmos);
+
+    static bool firstFrame{ true };
     if (viewDirty || firstFrame) {
-      glm::vec3 eye{ glm::cos(camYAngle) * glm::cos(camXAngle) * camDistance,
-                     glm::sin(camXAngle) * camDistance,
-                     glm::sin(camYAngle) * glm::cos(camXAngle) * camDistance };
-      glm::vec3 at{ 0.0f, 0.0f, 0.0f };
-      glm::vec3 up{ 0.0f, 1.0f, 0.0f };
+      const glm::vec3 eye{
+        glm::cos(camYAngle) * glm::cos(camXAngle) * camDistance,
+        glm::sin(camXAngle) * camDistance,
+        glm::sin(camYAngle) * glm::cos(camXAngle) * camDistance
+      };
+      const glm::vec3 at{ 0.0f, 0.0f, 0.0f };
+      const glm::vec3 up{ 0.0f, 1.0f, 0.0f };
       cameraView = glm::lookAt(eye, at, up);
+
       firstFrame = false;
     }
 
@@ -261,13 +330,11 @@ int main(int argc, char *argv[]) {
 
     ImGuizmo::BeginFrame();
 
-    // ImGui::SetNextWindowPos(ImVec2(10, 10));
-    ImGui::SetNextWindowSize(ImVec2(320, 340));
     ImGui::Begin("Editor");
 
     ImGuizmo::DrawGrid(glm::value_ptr(cameraView),
                        glm::value_ptr(cameraProjection),
-                       glm::value_ptr(kIdentityMatrix), 10.f);
+                       glm::value_ptr(kIdentityMatrix), 10.0f);
 
     ImGuizmo::DrawCubes(glm::value_ptr(cameraView),
                         glm::value_ptr(cameraProjection),
@@ -284,15 +351,15 @@ int main(int argc, char *argv[]) {
                     glm::value_ptr(modelMatrices[matId]), lastUsing == matId);
       if (ImGuizmo::IsUsing()) lastUsing = matId;
     }
+    ImGui::End();
+
+
 #if PROFILE_CODE
     auto finish = std::chrono::high_resolution_clock::now();
     auto execTime =
       std::chrono::duration_cast<std::chrono::microseconds>(finish - start)
         .count();
-#endif
-    ImGui::End();
 
-#if PROFILE_CODE
     if (currentSampleId < kNumSamples) {
       timeSamples[currentSampleId++] = execTime;
     }
@@ -310,25 +377,43 @@ int main(int argc, char *argv[]) {
     else
       ImGui::Text("EditTransform() = ~%ld microseconds", avgTime);
     ImGui::End();
-
 #endif
-
+    
     constexpr auto kViewSize = 128;
-    ImGuizmo::ViewManipulate(glm::value_ptr(cameraView), camDistance,
-                             ImVec2(io.DisplaySize.x - kViewSize, 0),
-                             ImVec2(kViewSize, kViewSize), 0x10101010);
 
-    // ---
+    glm::vec2 position, size;
+    GetViewport(position, size);
 
+    ImGuizmo::ViewManipulate(
+      glm::value_ptr(cameraView), camDistance,
+      glm::vec2{ position.x + size.x - kViewSize, position.y },
+      glm::vec2{ kViewSize }, 0x10101010);
 
-    glClearColor(0.45f, 0.4f, 0.4f, 1.f);
-    glClear(GL_COLOR_BUFFER_BIT);
     ImGui::Render();
 
-    imApp.EndFrame();
+    int displayWidth, displayHeight;
+    glfwGetFramebufferSize(window, &displayWidth, &displayHeight);
+    glViewport(0, 0, displayWidth, displayHeight);
+    glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+    glClear(GL_COLOR_BUFFER_BIT);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+      GLFWwindow *backupContext{ glfwGetCurrentContext() };
+      ImGui::UpdatePlatformWindows();
+      ImGui::RenderPlatformWindowsDefault();
+      glfwMakeContextCurrent(backupContext);
+    }
+
+    glfwSwapBuffers(window);
   }
 
-  imApp.Finish();
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
+
+  glfwDestroyWindow(window);
+  glfwTerminate();
 
   return 0;
 }
