@@ -2690,6 +2690,8 @@ namespace ImApp
 		static ImApp* Instance() { return mInstance; }
 		int Init(const Config& config = Config())
 		{
+        
+
 			mConfig = config;
 			wininfo = WININFO{ 0,0,0,0,
 			{ 'c','X','d',0 }
@@ -2716,9 +2718,15 @@ namespace ImApp
 				if (config.mFullscreen && ChangeDisplaySettingsA(&screenSettings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
 					return 0;
 			}
+
+
 #ifdef IMGUI_API
+                        IMGUI_CHECKVERSION();
 			ImGui::CreateContext();
 #endif
+         
+                       
+
 			if (!WindowInit(info))
 			{
 				WindowEnd(info);
@@ -2728,8 +2736,7 @@ namespace ImApp
 				return 0;
 
 #ifdef IMGUI_API
-			if (!ImGui_Init())
-				return 0;
+			if (!ImGui_Init()) return 0;
 
 #endif
 #ifdef FMOD_API
@@ -2746,6 +2753,8 @@ namespace ImApp
 #endif
 #endif
 			mDone = false;
+                        
+
 			return 1;
 		}
 
@@ -2776,6 +2785,7 @@ namespace ImApp
 #endif
 #ifdef IMGUI_API
 			ImGui::Render();
+         ImGui_RenderDrawLists(ImGui::GetDrawData());
 #endif
 			SwapBuffers(wininfo.hDC);
 		}
@@ -3448,9 +3458,14 @@ namespace ImApp
 			io.KeyMap[ImGuiKey_X] = 'X';
 			io.KeyMap[ImGuiKey_Y] = 'Y';
 			io.KeyMap[ImGuiKey_Z] = 'Z';
+         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-			io.ImeWindowHandle = this->wininfo.hWnd;
-			io.RenderDrawListsFn = ImGui_RenderDrawLists;       // Alternatively you can set this to NULL and call ImGui::GetDrawData() after ImGui::Render() to get the same ImDrawData pointer.
+         auto &style = ImGui::GetStyle();
+         //style.Colors
+
+
+			//io.ImeWindowHandle = this->wininfo.hWnd;
+			//io.RenderDrawListsFn = ImGui_RenderDrawLists;       // Alternatively you can set this to NULL and call ImGui::GetDrawData() after ImGui::Render() to get the same ImDrawData pointer.
 			/*
 			io.SetClipboardTextFn = ImGui_SetClipboardText;
 			io.GetClipboardTextFn = ImGui_GetClipboardText;
@@ -3462,6 +3477,7 @@ namespace ImApp
 		void ImGui_Shutdown()
 		{
 			ImGui_InvalidateDeviceObjects();
+         ImGui::DestroyContext();
 		}
 
 		void ImGui_NewFrame()
