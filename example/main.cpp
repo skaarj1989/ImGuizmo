@@ -1,4 +1,4 @@
-﻿#define _PROFILE_CODE 0
+﻿#define _PROFILE_CODE 1
 
 #include <array>
 #if _PROFILE_CODE
@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
   _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
   _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 
-#if PROFILE_CODE
+#if _PROFILE_CODE
   constexpr auto kNumSamples = 1000;
   std::array<long long, kNumSamples> timeSamples{};
   int currentSampleId{ 0 };
@@ -361,7 +361,7 @@ int main(int argc, char *argv[]) {
     }
     ImGui::End();
 
-#if PROFILE_CODE
+#if _PROFILE_CODE
     auto finish = std::chrono::high_resolution_clock::now();
     auto execTime =
       std::chrono::duration_cast<std::chrono::microseconds>(finish - start)
