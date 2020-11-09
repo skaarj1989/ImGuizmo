@@ -1,21 +1,21 @@
-﻿//#define PROFILE_CODE 1
+﻿#define _PROFILE_CODE 0
 
 #include <array>
-#if PROFILE_CODE
+#if _PROFILE_CODE
 #  include <algorithm>
 #  include <chrono>
 #  include <execution>
 #endif
 
-#include "glad/glad.h"
-#include "GLFW/glfw3.h"
-
+#include "ImGuizmo.h"
 #include "imgui.h"
 #include "imgui_internal.h"
+
+#include "glad/glad.h"
+#include "GLFW/glfw3.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-#include "ImGuizmo.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
@@ -83,16 +83,6 @@ void OrthoGraphic(const float l, float r, float b, const float t, float zn,
   m16[13] = (t + b) / (b - t);
   m16[14] = zn / (zn - zf);
   m16[15] = 1.0f;
-
-  /*
-  Result[0][0] = static_cast<T>(2) / (right - left);
-  Result[1][1] = static_cast<T>(2) / (top - bottom);
-  Result[2][2] = -static_cast<T>(2) / (zFar - zNear);
-  Result[3][0] = -(right + left) / (right - left);
-  Result[3][1] = -(top + bottom) / (top - bottom);
-  Result[3][2] = -(zFar + zNear) / (zFar - zNear);
-  */
-
 }
 
 void EditTransform(const float *view, float *projection, float *model,
@@ -107,17 +97,17 @@ void EditTransform(const float *view, float *projection, float *model,
   static bool boundSizing{ false };
   static bool boundSizingSnap{ false };
 
-  constexpr auto kTranslateKey = 90; // 'z'
-  constexpr auto kRotateKey = 69; // 'e'
-  constexpr auto kScaleKey = 82; // 'r'
-  constexpr auto kSnapKey = 83; // 's'
+  constexpr auto kTranslateKey = GLFW_KEY_Z;
+  constexpr auto kRotateKey = GLFW_KEY_E;   
+  constexpr auto kScaleKey = GLFW_KEY_R;    
+  constexpr auto kSnapKey = GLFW_KEY_S;     
 
   if (editTransformDecomposition) {
     if (ImGui::IsKeyPressed(kTranslateKey))
       currentGizmoOperation = ImGuizmoOperation_Translate;
     if (ImGui::IsKeyPressed(kRotateKey))
       currentGizmoOperation = ImGuizmoOperation_Rotate;
-    if (ImGui::IsKeyPressed(kScaleKey)) 
+    if (ImGui::IsKeyPressed(kScaleKey))
       currentGizmoOperation = ImGuizmoOperation_Scale;
 
     if (ImGui::RadioButton("Translate", currentGizmoOperation ==
@@ -132,7 +122,7 @@ void EditTransform(const float *view, float *projection, float *model,
                            currentGizmoOperation == ImGuizmoOperation_Scale))
       currentGizmoOperation = ImGuizmoOperation_Scale;
 
-    float translation[3], rotation[3], scale[3];
+    float translation[3]{}, rotation[3]{}, scale[3]{};
     ImGuizmo::DecomposeMatrix(model, translation, rotation, scale);
     ImGui::InputFloat3("T", translation);
     ImGui::InputFloat3("R", rotation);
@@ -174,7 +164,7 @@ void EditTransform(const float *view, float *projection, float *model,
 
   glm::vec2 position, size;
   GetViewport(position, size);
-  ImGuizmo::SetViewport(position.x, position.y, size.x, size.y);
+  ImGuizmo::SetViewport(position, size);
   ImGuizmo::Manipulate(
     view, projection, currentGizmoOperation, currentGizmoMode, model, nullptr,
     useSnap ? &snap[0] : nullptr, boundSizing ? bounds : nullptr,
@@ -194,6 +184,7 @@ int main(int argc, char *argv[]) {
 
   if (!glfwInit()) return 1;
 
+  glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
@@ -226,10 +217,12 @@ int main(int argc, char *argv[]) {
 
   // When viewports are enabled we tweak WindowRounding/WindowBg so platform
   // windows can look identical to regular ones.
-  ImGuiStyle &style{ ImGui::GetStyle() };
-  if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-    style.WindowRounding = 0.0f;
-    style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+  {
+    ImGuiStyle &style{ ImGui::GetStyle() };
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+      style.WindowRounding = 0.0f;
+      style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+    }
   }
 
   ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -237,7 +230,7 @@ int main(int argc, char *argv[]) {
   const char *glsl_version{ "#version 130" };
   ImGui_ImplOpenGL3_Init(glsl_version);
 
-  int lastUsing = 0;
+  int lastUsing{ 0 };
 
   static glm::mat4 cameraView{ 1.0f };
   static glm::mat4 cameraProjection{ 1.0f };
@@ -250,15 +243,14 @@ int main(int argc, char *argv[]) {
     glm::translate(kIdentityMatrix, { 0.0f, 0.0f, 2.0f }),
   };
 
-  float viewWidth = 10.0f; // for orthographic
-  float camYAngle = 165.0f / 180.0f * 3.14159f;
-  float camXAngle = 32.0f / 180.0f * 3.14159f;
+  float viewWidth{ 10.0f }; // for ortho projection
+  float camYAngle{ 165.0f / 180.0f * 3.14159f };
+  float camXAngle{ 32.0f / 180.0f * 3.14159f };
 
-  float fov = 27.0f;
+  float fov{ 27.0f };
 
-  bool show_demo_window = true;
-  //bool show_another_window = false;
-  ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+  bool showDemoWindow{ true };
+  ImVec4 clearColor{ 0.45f, 0.55f, 0.60f, 1.00f };
 
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
@@ -267,13 +259,32 @@ int main(int argc, char *argv[]) {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+    if (showDemoWindow) ImGui::ShowDemoWindow(&showDemoWindow);
+
+    ImGui::Begin("ImGuizmo: Style");
+    auto &style{ ImGuizmo::GetStyle() };
+    ImGui::DragFloat("Alpha", &style.Alpha, 0.01f, 0.01f, 1.0f);
+    ImGui::DragFloat("Gizmo Scale", &style.GizmoScale, 0.01f, 0.01f, 1.0f);
+    ImGui::DragFloat("Ring Size", &style.ScreenRingSize, 0.001f, 0.01f, 1.0f);
+
+    ImGui::ColorEdit4("Text", &style.Colors[ImGuizmoCol_Text].x);
+    ImGui::ColorEdit4("Text shadow", &style.Colors[ImGuizmoCol_TextShadow].x);
+    ImGui::ColorEdit4("Inactive", &style.Colors[ImGuizmoCol_Inactive].x);
+    ImGui::ColorEdit4("Selection", &style.Colors[ImGuizmoCol_Selection].x);
+    ImGui::ColorEdit4("Axis X", &style.Colors[ImGuizmoCol_AxisX].x);
+    ImGui::ColorEdit4("Axis Y", &style.Colors[ImGuizmoCol_AxisY].x);
+    ImGui::ColorEdit4("Axis Z", &style.Colors[ImGuizmoCol_AxisZ].x);
+    ImGui::ColorEdit4("Plane YZ", &style.Colors[ImGuizmoCol_PlaneYZ].x);
+    ImGui::ColorEdit4("Plane ZX", &style.Colors[ImGuizmoCol_PlaneZX].x);
+    ImGui::ColorEdit4("Plane XY", &style.Colors[ImGuizmoCol_PlaneXY].x);
+
+    ImGui::End();
 
     static bool isPerspective{ true };
     if (isPerspective) {
 #if 0
       cameraProjection = glm::perspective(
-        glm::radians(60.0f), io.DisplaySize.x / io.DisplaySize.y, 0.1f, 100.0f);
+        glm::radians(fov), io.DisplaySize.x / io.DisplaySize.y, 0.1f, 1000.0f);
 #else
       Perspective(fov, io.DisplaySize.x / io.DisplaySize.y, 0.1f, 100.f,
                   glm::value_ptr(cameraProjection));
@@ -291,8 +302,9 @@ int main(int argc, char *argv[]) {
     ImGuizmo::SetOrthographic(!isPerspective);
 
     static bool gizmoEnabled{ true };
-    if (ImGui::Checkbox("Enabled", &gizmoEnabled))
-      ImGuizmo::Enable(gizmoEnabled);
+    if (ImGui::IsKeyPressed(GLFW_KEY_X)) gizmoEnabled = !gizmoEnabled;
+    ImGui::Checkbox("Enabled", &gizmoEnabled);
+    ImGuizmo::Enable(gizmoEnabled);
 
     ImGui::Text("Camera");
     if (ImGui::RadioButton("Perspective", isPerspective)) isPerspective = true;
@@ -300,7 +312,7 @@ int main(int argc, char *argv[]) {
     if (ImGui::RadioButton("Orthographic", !isPerspective))
       isPerspective = false;
     if (isPerspective) {
-      ImGui::SliderFloat("FOV", &fov, 20.0f, 110.f);
+      ImGui::SliderFloat("FOV", &fov, 20.0f, 120.f);
     } else {
       ImGui::SliderFloat("Ortho width", &viewWidth, 1, 20);
     }
@@ -312,7 +324,7 @@ int main(int argc, char *argv[]) {
     static bool firstFrame{ true };
     if (viewDirty || firstFrame) {
       firstFrame = false;
-      
+
       const glm::vec3 eye{
         glm::cos(camYAngle) * glm::cos(camXAngle) * camDistance,
         glm::sin(camXAngle) * camDistance,
@@ -325,12 +337,7 @@ int main(int argc, char *argv[]) {
 
     ImGui::Text("X: %f Y: %f", io.MousePos.x, io.MousePos.y);
 
-    ImGui::Separator();
-
     ImGuizmo::BeginFrame();
-
-    ImGui::Begin("Editor");
-
     ImGuizmo::DrawGrid(glm::value_ptr(cameraView),
                        glm::value_ptr(cameraProjection),
                        glm::value_ptr(kIdentityMatrix), 10.0f);
@@ -339,7 +346,9 @@ int main(int argc, char *argv[]) {
                         glm::value_ptr(cameraProjection),
                         glm::value_ptr(modelMatrices[0]), gizmoCount);
 
-#if PROFILE_CODE
+    ImGui::Begin("Editor");
+
+#if _PROFILE_CODE
     auto start = std::chrono::high_resolution_clock::now();
 #endif
     for (int matId = 0; matId < gizmoCount; matId++) {
@@ -358,11 +367,10 @@ int main(int argc, char *argv[]) {
       std::chrono::duration_cast<std::chrono::microseconds>(finish - start)
         .count();
 
-    if (currentSampleId < kNumSamples) {
+    if (currentSampleId < kNumSamples)
       timeSamples[currentSampleId++] = execTime;
-    }
 
-    static long long avgTime = 0;
+    static long long avgTime{ 0 };
     if (avgTime == 0 && currentSampleId == kNumSamples) {
       const auto accumulated = std::reduce(
         std::execution::par, timeSamples.cbegin(), timeSamples.cend());
@@ -376,7 +384,7 @@ int main(int argc, char *argv[]) {
       ImGui::Text("EditTransform() = ~%ld microseconds", avgTime);
     ImGui::End();
 #endif
-    
+
     constexpr auto kViewSize = 128;
 
     glm::vec2 position, size;
@@ -394,7 +402,7 @@ int main(int argc, char *argv[]) {
     int displayWidth, displayHeight;
     glfwGetFramebufferSize(window, &displayWidth, &displayHeight);
     glViewport(0, 0, displayWidth, displayHeight);
-    glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+    glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -410,6 +418,7 @@ int main(int argc, char *argv[]) {
 
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
+
   ImGui::DestroyContext();
 
   glfwDestroyWindow(window);

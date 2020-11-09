@@ -45,13 +45,20 @@ enum ImGuizmoCol_ {
 
 struct ImGuizmoStyle {
   float GizmoScale{ 0.1f };
+  float ScreenRingSize{ 0.06f };
 
   float Alpha{ 1.0f };
-  ImVec4 Colors[ImGuiCol_COUNT];
+  ImVec4 Colors[ImGuizmoCol_COUNT];
 
   IMGUI_API ImGuizmoStyle();
 };
 
+enum ImGuizmoMode_ {
+  ImGuizmoMode_Local,
+  ImGuizmoMode_World,
+
+  ImGuizmoMode_COUNT
+};
 enum ImGuizmoOperation_ {
   ImGuizmoOperation_Translate,
   ImGuizmoOperation_Rotate,
@@ -60,13 +67,6 @@ enum ImGuizmoOperation_ {
   ImGuizmoOperation_Bounds,
 
   ImGuizmoOperation_COUNT
-};
-
-enum ImGuizmoMode_ {
-  ImGuizmoMode_Local,
-  ImGuizmoMode_World,
-
-  ImGuizmoMode_COUNT
 };
 
 namespace ImGuizmo {
@@ -106,19 +106,18 @@ IMGUI_API void Enable(bool enabled);
 // caution.
 
 /**
- * @param [in] matrix Column-major
- * @param [out] t vec3 translation
- * @param [out] r vec3 rotation
- * @param [out] s vec3 scale
+ * @param [in] matrix Column-major matrix
+ * @param [out] t vec3 Translation
+ * @param [out] r vec3 Rotation
+ * @param [out] s vec3 Scale
  */
 IMGUI_API void DecomposeMatrix(const float *matrix, float *t, float *r,
                                float *s);
-
 /**
- * @param [in] t vec3 translation
- * @param [in] r vec3 rotation
- * @param [in] s vec3 scale
- * @param [out] matrix Column-major
+ * @param [in] t vec3 Translation
+ * @param [in] r vec3 Rotation
+ * @param [in] s vec3 Scale
+ * @param [out] matrix Column-major matrix
  */
 IMGUI_API void RecomposeMatrix(const float *t, const float *r, const float *s,
                                float *matrix);
@@ -142,14 +141,15 @@ IMGUI_API void DrawGrid(const float *view, const float *projection,
 // translation is applied in world space
 
 /**
- * @param [in] view camera view matrix
- * @param [in] projection camera projection matrix
- * @param [in] matrix model matrix
+ * @param [in] view Camera view, column-major matrix
+ * @param [in] projection Camera projection, column-major matrix
+ * @param [in/out] matrix Model, column-major matrix
+ * @param [in] snap
  */
 IMGUI_API bool Manipulate(const float *view, const float *projection,
                           ImGuizmoOperation_ operation, ImGuizmoMode_ mode,
                           float *model, float *deltaMatrix = nullptr,
-                          float *snap = nullptr,
+                          const float *snap = nullptr,
                           const float *localBounds = nullptr,
                           const float *boundsSnap = nullptr);
 /**
@@ -157,6 +157,8 @@ IMGUI_API bool Manipulate(const float *view, const float *projection,
  * https://patents.google.com/patent/US7782319B2/en It seems to be a defensive
  * patent in the US. I don't think it will bring troubles using it as other
  * software are using the same mechanics. But just in case, you are now warned!
+ * 
+ * @param [in] view Camera view, column-major matrix
  */
 IMGUI_API void ViewManipulate(float *view, const float length, ImVec2 position,
                               ImVec2 size, ImU32 backgroundColor);
