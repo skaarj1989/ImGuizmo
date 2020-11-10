@@ -248,7 +248,7 @@ int main(int argc, char *argv[]) {
   float camYAngle{ 165.0f / 180.0f * 3.14159f };
   float camXAngle{ 32.0f / 180.0f * 3.14159f };
 
-  float fov{ 60.0f };
+  float fov{ 60.0 };
 
   bool showDemoWindow{ true };
   ImVec4 clearColor{ 0.45f, 0.55f, 0.60f, 1.00f };
@@ -266,7 +266,7 @@ int main(int argc, char *argv[]) {
     auto &style{ ImGuizmo::GetStyle() };
     ImGui::DragFloat("Alpha", &style.Alpha, 0.01f, 0.01f, 1.0f);
     ImGui::DragFloat("Gizmo Scale", &style.GizmoScale, 0.01f, 0.01f, 1.0f);
-    ImGui::DragFloat("Ring Size", &style.ScreenRingSize, 0.001f, 0.01f, 1.0f);
+    ImGui::DragFloat("Ring Size", &style.RotationRingThickness, 0.1f, 0.1f, 10.0f);
 
     ImGui::ColorEdit4("Text", &style.Colors[ImGuizmoCol_Text].x);
     ImGui::ColorEdit4("Text shadow", &style.Colors[ImGuizmoCol_TextShadow].x);

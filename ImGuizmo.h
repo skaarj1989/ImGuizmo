@@ -44,7 +44,7 @@ enum ImGuizmoCol_ {
 };
 struct ImGuizmoStyle {
   float GizmoScale{ 0.1f };
-  float ScreenRingSize{ 0.06f };
+  float RotationRingThickness{ 4.5f };
 
   float Alpha{ 1.0f };
   ImVec4 Colors[ImGuizmoCol_COUNT];
