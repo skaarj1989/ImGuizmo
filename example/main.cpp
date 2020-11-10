@@ -1,4 +1,4 @@
-﻿#define _PROFILE_CODE 1
+﻿#define _PROFILE_CODE 0
 
 #include <array>
 #if _PROFILE_CODE
@@ -208,6 +208,7 @@ int main(int argc, char *argv[]) {
 
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   // Enable Docking
   io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable Multi-Viewport /
+  io.ConfigWindowsMoveFromTitleBarOnly = true;
 
   // io.ConfigViewportsNoAutoMerge = true;
   // io.ConfigViewportsNoTaskBarIcon = true;
@@ -230,7 +231,7 @@ int main(int argc, char *argv[]) {
   const char *glsl_version{ "#version 130" };
   ImGui_ImplOpenGL3_Init(glsl_version);
 
-  int lastUsing{ 0 };
+  int lastMatrixId{ 0 };
 
   static glm::mat4 cameraView{ 1.0f };
   static glm::mat4 cameraProjection{ 1.0f };
@@ -247,7 +248,7 @@ int main(int argc, char *argv[]) {
   float camYAngle{ 165.0f / 180.0f * 3.14159f };
   float camXAngle{ 32.0f / 180.0f * 3.14159f };
 
-  float fov{ 27.0f };
+  float fov{ 60.0f };
 
   bool showDemoWindow{ true };
   ImVec4 clearColor{ 0.45f, 0.55f, 0.60f, 1.00f };
@@ -280,9 +281,11 @@ int main(int argc, char *argv[]) {
 
     ImGui::End();
 
+    ImGuizmo::PrintContext();
+
     static bool isPerspective{ true };
     if (isPerspective) {
-#if 0
+#if 1
       cameraProjection = glm::perspective(
         glm::radians(fov), io.DisplaySize.x / io.DisplaySize.y, 0.1f, 1000.0f);
 #else
@@ -337,27 +340,27 @@ int main(int argc, char *argv[]) {
 
     ImGui::Text("X: %f Y: %f", io.MousePos.x, io.MousePos.y);
 
-    ImGuizmo::BeginFrame();
+    const ImGuiViewport *mainViewport{ ImGui::GetMainViewport() };
+    ImGuizmo::SpawnWorkspace("ImGuizmo", mainViewport->Pos, mainViewport->Size);
+
     ImGuizmo::DrawGrid(glm::value_ptr(cameraView),
                        glm::value_ptr(cameraProjection),
-                       glm::value_ptr(kIdentityMatrix), 10.0f);
-
+                       glm::value_ptr(glm::mat4{ 1.0f }), 10.0f);
     ImGuizmo::DrawCubes(glm::value_ptr(cameraView),
                         glm::value_ptr(cameraProjection),
                         glm::value_ptr(modelMatrices[0]), gizmoCount);
 
-    ImGui::Begin("Editor");
-
 #if _PROFILE_CODE
     auto start = std::chrono::high_resolution_clock::now();
 #endif
-    for (int matId = 0; matId < gizmoCount; matId++) {
-      ImGuizmo::SetID(matId);
 
-      EditTransform(glm::value_ptr(cameraView),
-                    glm::value_ptr(cameraProjection),
-                    glm::value_ptr(modelMatrices[matId]), lastUsing == matId);
-      if (ImGuizmo::IsUsing()) lastUsing = matId;
+    ImGui::Begin("Editor");
+    for (int matrixId = 0; matrixId < gizmoCount; ++matrixId) {
+      ImGuizmo::SetID(matrixId);
+      EditTransform(
+        glm::value_ptr(cameraView), glm::value_ptr(cameraProjection),
+        glm::value_ptr(modelMatrices[matrixId]), lastMatrixId == matrixId);
+      if (ImGuizmo::IsUsing()) lastMatrixId = matrixId;
     }
     ImGui::End();
 
@@ -387,13 +390,20 @@ int main(int argc, char *argv[]) {
 
     constexpr auto kViewSize = 128;
 
-    glm::vec2 position, size;
-    GetViewport(position, size);
+    //if (!ImGuizmo::IsUsing()) {
+      ImGui::SetNextWindowSize(glm::vec2{ kViewSize } + glm::vec2{ 0, 20 });
+      ImGui::Begin("ViewManipulate", nullptr, ImGuiWindowFlags_NoResize);
 
-    ImGuizmo::ViewManipulate(
-      glm::value_ptr(cameraView), camDistance,
-      glm::vec2{ position.x + size.x - kViewSize, position.y },
-      glm::vec2{ kViewSize }, 0x10101010);
+      //position = ImGui::GetCurrentWindow()->Viewport->Pos;
+      //size = ImGui::GetCurrentWindow()->Viewport->Size;
+      // glm::vec2{ position.x + size.x - kViewSize, position.y }
+
+      const glm::vec2 position{ glm::vec2{ ImGui::GetWindowPos() } +
+                                glm::vec2{ 0, 20 } };
+      ImGuizmo::ViewManipulate(glm::value_ptr(cameraView), camDistance,
+                               position, glm::vec2{ kViewSize }, 0x10101010);
+      ImGui::End();
+    //}
 
     ImGui::Render();
 

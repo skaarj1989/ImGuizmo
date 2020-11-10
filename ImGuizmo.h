@@ -42,7 +42,6 @@ enum ImGuizmoCol_ {
 
   ImGuizmoCol_COUNT
 };
-
 struct ImGuizmoStyle {
   float GizmoScale{ 0.1f };
   float ScreenRingSize{ 0.06f };
@@ -71,74 +70,24 @@ enum ImGuizmoOperation_ {
 
 namespace ImGuizmo {
 
+IMGUI_API void PrintContext();
+
 IMGUI_API ImGuizmoStyle &GetStyle(); 
+
+IMGUI_API void Enable(bool enabled);
 
 // call inside your own window and before Manipulate() in order to draw gizmo to
 // that window. Or pass a specific ImDrawList to draw to (e.g.
 // ImGui::GetForegroundDrawList()).
 IMGUI_API void SetDrawlist(ImDrawList *drawlist = nullptr);
-
-/** call BeginFrame right after ImGui_XXXX_NewFrame(); */
-IMGUI_API void BeginFrame();
-
-/** @return if mouse is over any gizmo control (axis, plane or screen component) */
-IMGUI_API bool IsOver();
-
-/** @return true if mouse IsOver or if the gizmo is in moving state */
-IMGUI_API bool IsUsing();
-
-// enable/disable the gizmo. Stay in the state until next call to Enable.
-// gizmo is rendered with gray half transparent color when disabled
-IMGUI_API void Enable(bool enabled);
-
-// helper functions for manualy editing translation/rotation/scale with an input
-// float translation, rotation and scale float points to 3 floats each Angles
-// are in degrees (more suitable for human editing) example: float
-// matrixTranslation[3], matrixRotation[3], matrixScale[3];
-// ImGuizmo::DecomposeMatrixToComponents(gizmoMatrix.m16, matrixTranslation,
-// matrixRotation, matrixScale); ImGui::InputFloat3("Tr", matrixTranslation, 3);
-// ImGui::InputFloat3("Rt", matrixRotation, 3);
-// ImGui::InputFloat3("Sc", matrixScale, 3);
-// ImGuizmo::RecomposeMatrixFromComponents(matrixTranslation, matrixRotation,
-// matrixScale, gizmoMatrix.m16);
-//
-// These functions have some numerical stability issues for now. Use with
-// caution.
-
-/**
- * @param [in] matrix Column-major matrix
- * @param [out] t vec3 Translation
- * @param [out] r vec3 Rotation
- * @param [out] s vec3 Scale
- */
-IMGUI_API void DecomposeMatrix(const float *matrix, float *t, float *r,
-                               float *s);
-/**
- * @param [in] t vec3 Translation
- * @param [in] r vec3 Rotation
- * @param [in] s vec3 Scale
- * @param [out] matrix Column-major matrix
- */
-IMGUI_API void RecomposeMatrix(const float *t, const float *r, const float *s,
-                               float *matrix);
-
 IMGUI_API void SetViewport(const ImVec2 &position, const ImVec2 &size);
 IMGUI_API void SetViewport(float x, float y, float width, float height);
-
 IMGUI_API void SetOrthographic(bool isOrthographic);
 
-// Render a cube with face color corresponding to face normal. Usefull for
-// debug/tests
-IMGUI_API void DrawCubes(const float *view, const float *projection,
-                         const float *matrices, int matrixCount);
-IMGUI_API void DrawGrid(const float *view, const float *projection,
-                        const float *matrix, const float gridSize);
+IMGUI_API void SpawnWorkspace(const char *name, const ImVec2 &position,
+                              const ImVec2 &size);
 
-// call it when you want a gizmo
-// Needs view and projection matrices.
-// matrix parameter is the source matrix (where will be gizmo be drawn) and
-// might be transformed by the function. Return deltaMatrix is optional
-// translation is applied in world space
+IMGUI_API void SetID(int id);
 
 /**
  * @param [in] view Camera view, column-major matrix
@@ -163,9 +112,38 @@ IMGUI_API bool Manipulate(const float *view, const float *projection,
 IMGUI_API void ViewManipulate(float *view, const float length, ImVec2 position,
                               ImVec2 size, ImU32 backgroundColor);
 
-IMGUI_API void SetID(int id);
-
+/** @return true if mouse IsOver or if the gizmo is in moving state */
+IMGUI_API bool IsUsing();
+/** @return if mouse is over any gizmo control (axis, plane or screen component)
+ */
+IMGUI_API bool IsOver();
 /** @return true if the cursor is over the operations gizmo */
 IMGUI_API bool IsOver(ImGuizmoOperation_ op);
+
+//
+//
+//
+
+IMGUI_API void DrawCubes(const float *view, const float *projection,
+                         const float *models, int modelCount);
+IMGUI_API void DrawGrid(const float *view, const float *projection,
+                        const float *model, const float gridSize);
+
+/**
+ * @param [in] matrix Column-major matrix
+ * @param [out] t vec3 Translation
+ * @param [out] r vec3 Rotation
+ * @param [out] s vec3 Scale
+ */
+IMGUI_API void DecomposeMatrix(const float *matrix, float *t, float *r,
+                               float *s);
+/**
+ * @param [in] t vec3 Translation
+ * @param [in] r vec3 Rotation
+ * @param [in] s vec3 Scale
+ * @param [out] matrix Column-major matrix
+ */
+IMGUI_API void RecomposeMatrix(const float *t, const float *r, const float *s,
+                               float *matrix);
 
 }; // namespace ImGuizmo
