@@ -54,19 +54,21 @@ struct ImGuizmoStyle {
 
 enum ImGuizmoMode_ {
   ImGuizmoMode_Local,
-  ImGuizmoMode_World,
+  ImGuizmoMode_Global,
 
   ImGuizmoMode_COUNT
 };
-enum ImGuizmoOperation_ {
-  ImGuizmoOperation_Translate,
-  ImGuizmoOperation_Rotate,
-  ImGuizmoOperation_Scale,
 
-  ImGuizmoOperation_Bounds,
 
-  ImGuizmoOperation_COUNT
+enum ImGuizmoOperationFlags_ {
+  ImGuizmoOperationFlags_None = 0,
+
+  ImGuizmoOperationFlags_Translate = 1 << 0,
+  ImGuizmoOperationFlags_Rotate = 1 << 1,
+  ImGuizmoOperationFlags_Scale = 1 << 2,
 };
+
+using ImGuizmoOperationFlags = int;
 
 namespace ImGuizmo {
 
@@ -76,31 +78,42 @@ IMGUI_API ImGuizmoStyle &GetStyle();
 
 IMGUI_API void Enable(bool enabled);
 
-// call inside your own window and before Manipulate() in order to draw gizmo to
-// that window. Or pass a specific ImDrawList to draw to (e.g.
-// ImGui::GetForegroundDrawList()).
-IMGUI_API void SetDrawlist(ImDrawList *drawlist = nullptr);
+/** @param drawList */
+IMGUI_API void SetDrawlist(ImDrawList *drawList = nullptr);
 IMGUI_API void SetViewport(const ImVec2 &position, const ImVec2 &size);
 IMGUI_API void SetViewport(float x, float y, float width, float height);
-IMGUI_API void SetOrthographic(bool isOrthographic);
-
-IMGUI_API void SpawnWorkspace(const char *name, const ImVec2 &position,
-                              const ImVec2 &size);
-
-IMGUI_API void SetID(int id);
 
 /**
- * @param [in] view Camera view, column-major matrix
- * @param [in] projection Camera projection, column-major matrix
- * @param [in/out] matrix Model, column-major matrix
- * @param [in] snap
+ * @note Convenience function
+ * @brief Creates transparent window and uses its drawList and viewport
  */
+IMGUI_API void SetupWorkspace(const char *name, const ImVec2 &position,
+                              const ImVec2 &size);
+
+/**
+ * @param [in] view Camera view matrix (column-major)
+ * @param [in] projection Camera projection matrix (column-major)
+ */
+IMGUI_API void SetViewer(const float *view, const float *projection,
+                         bool isOrtho);
+
+/**
+ * @param [in/out] matrix Model matrix (column-major)
+ * @param [out] deltaMatrix 
+ * @param [in] snap vec3
+ */
+IMGUI_API bool Manipulate(ImGuizmoMode_ mode, ImGuizmoOperationFlags flags,
+                          float *model, float *deltaMatrix = nullptr,
+                          const float *snap = nullptr);
+
+/*
 IMGUI_API bool Manipulate(const float *view, const float *projection,
                           ImGuizmoOperation_ operation, ImGuizmoMode_ mode,
                           float *model, float *deltaMatrix = nullptr,
                           const float *snap = nullptr,
                           const float *localBounds = nullptr,
                           const float *boundsSnap = nullptr);
+ */
 /**
  * @note Please note that this cubeview is patented by Autodesk:
  * https://patents.google.com/patent/US7782319B2/en It seems to be a defensive
@@ -116,9 +129,9 @@ IMGUI_API void ViewManipulate(float *view, const float length, ImVec2 position,
 IMGUI_API bool IsUsing();
 /** @return if mouse is over any gizmo control (axis, plane or screen component)
  */
-IMGUI_API bool IsOver();
+//IMGUI_API bool IsOver();
 /** @return true if the cursor is over the operations gizmo */
-IMGUI_API bool IsOver(ImGuizmoOperation_ op);
+//IMGUI_API bool IsOver(ImGuizmoOperation_ op);
 
 //
 //

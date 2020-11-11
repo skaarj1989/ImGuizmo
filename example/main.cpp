@@ -85,10 +85,12 @@ void OrthoGraphic(const float l, float r, float b, const float t, float zn,
   m16[15] = 1.0f;
 }
 
-void EditTransform(const float *view, float *projection, float *model,
-                   bool editTransformDecomposition) {
-  static auto currentGizmoOperation{ ImGuizmoOperation_Translate };
+void EditTransform(float *model, bool editTransformDecomposition) {
+  //static auto currentGizmoOperation{ ImGuizmoOperation_Translate };
+  
   static auto currentGizmoMode{ ImGuizmoMode_Local };
+  static ImGuizmoOperationFlags gizmoFlags{ ImGuizmoOperationFlags_Translate |
+                                            ImGuizmoOperationFlags_Rotate };
 
   static bool useSnap{ false };
   static float snap[3]{ 1.0f, 1.0f, 1.0f };
@@ -104,12 +106,13 @@ void EditTransform(const float *view, float *projection, float *model,
 
   if (editTransformDecomposition) {
     if (ImGui::IsKeyPressed(kTranslateKey))
-      currentGizmoOperation = ImGuizmoOperation_Translate;
+      gizmoFlags ^= ImGuizmoOperationFlags_Translate;
     if (ImGui::IsKeyPressed(kRotateKey))
-      currentGizmoOperation = ImGuizmoOperation_Rotate;
+      gizmoFlags ^= ImGuizmoOperationFlags_Rotate;
     if (ImGui::IsKeyPressed(kScaleKey))
-      currentGizmoOperation = ImGuizmoOperation_Scale;
+      gizmoFlags ^= ImGuizmoOperationFlags_Scale;
 
+    /*
     if (ImGui::RadioButton("Translate", currentGizmoOperation ==
                                           ImGuizmoOperation_Translate))
       currentGizmoOperation = ImGuizmoOperation_Translate;
@@ -121,6 +124,7 @@ void EditTransform(const float *view, float *projection, float *model,
     if (ImGui::RadioButton("Scale",
                            currentGizmoOperation == ImGuizmoOperation_Scale))
       currentGizmoOperation = ImGuizmoOperation_Scale;
+      */
 
     float translation[3]{}, rotation[3]{}, scale[3]{};
     ImGuizmo::DecomposeMatrix(model, translation, rotation, scale);
@@ -129,18 +133,20 @@ void EditTransform(const float *view, float *projection, float *model,
     ImGui::InputFloat3("S", scale);
     ImGuizmo::RecomposeMatrix(translation, rotation, scale, model);
 
-    if (currentGizmoOperation != ImGuizmoOperation_Scale) {
+    
+    //if (currentGizmoOperation != ImGuizmoOperation_Scale) {
       if (ImGui::RadioButton("Local", currentGizmoMode == ImGuizmoMode_Local))
         currentGizmoMode = ImGuizmoMode_Local;
       ImGui::SameLine();
-      if (ImGui::RadioButton("World", currentGizmoMode == ImGuizmoMode_World))
-        currentGizmoMode = ImGuizmoMode_World;
-    }
+      if (ImGui::RadioButton("World", currentGizmoMode == ImGuizmoMode_Global))
+        currentGizmoMode = ImGuizmoMode_Global;
+    //}
 
     if (ImGui::IsKeyPressed(kSnapKey)) useSnap = !useSnap;
     ImGui::Checkbox("", &useSnap);
     ImGui::SameLine();
 
+    /*
     switch (currentGizmoOperation) {
     case ImGuizmoOperation_Translate:
       ImGui::InputFloat3("Snap", &snap[0]);
@@ -152,6 +158,7 @@ void EditTransform(const float *view, float *projection, float *model,
       ImGui::InputFloat("Scale Snap", &snap[0]);
       break;
     }
+    */
     ImGui::Checkbox("Bound Sizing", &boundSizing);
     if (boundSizing) {
       ImGui::PushID(3);
@@ -162,13 +169,18 @@ void EditTransform(const float *view, float *projection, float *model,
     }
   }
 
-  glm::vec2 position, size;
-  GetViewport(position, size);
-  ImGuizmo::SetViewport(position, size);
+  
+
+  ImGuizmo::Manipulate(currentGizmoMode, gizmoFlags, model, nullptr,
+    useSnap ? &snap[0] : nullptr/*, boundSizing ? bounds : nullptr,
+    boundSizingSnap ? boundsSnap : nullptr*/);
+
+  /*
   ImGuizmo::Manipulate(
     view, projection, currentGizmoOperation, currentGizmoMode, model, nullptr,
     useSnap ? &snap[0] : nullptr, boundSizing ? bounds : nullptr,
     boundSizingSnap ? boundsSnap : nullptr);
+  */
 }
 
 int main(int argc, char *argv[]) {
@@ -302,7 +314,7 @@ int main(int argc, char *argv[]) {
                    -1000.f, glm::value_ptr(cameraProjection));
 #endif
     }
-    ImGuizmo::SetOrthographic(!isPerspective);
+    //ImGuizmo::SetOrthographic(!isPerspective);
 
     static bool gizmoEnabled{ true };
     if (ImGui::IsKeyPressed(GLFW_KEY_X)) gizmoEnabled = !gizmoEnabled;
@@ -341,7 +353,9 @@ int main(int argc, char *argv[]) {
     ImGui::Text("X: %f Y: %f", io.MousePos.x, io.MousePos.y);
 
     const ImGuiViewport *mainViewport{ ImGui::GetMainViewport() };
-    ImGuizmo::SpawnWorkspace("ImGuizmo", mainViewport->Pos, mainViewport->Size);
+    ImGuizmo::SetupWorkspace("ImGuizmo", mainViewport->Pos, mainViewport->Size);
+    ImGuizmo::SetViewer(glm::value_ptr(cameraView),
+                        glm::value_ptr(cameraProjection), !isPerspective);
 
     ImGuizmo::DrawGrid(glm::value_ptr(cameraView),
                        glm::value_ptr(cameraProjection),
@@ -355,13 +369,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     ImGui::Begin("Editor");
-    for (int matrixId = 0; matrixId < gizmoCount; ++matrixId) {
-      ImGuizmo::SetID(matrixId);
-      EditTransform(
-        glm::value_ptr(cameraView), glm::value_ptr(cameraProjection),
-        glm::value_ptr(modelMatrices[matrixId]), lastMatrixId == matrixId);
-      if (ImGuizmo::IsUsing()) lastMatrixId = matrixId;
-    }
+    EditTransform(glm::value_ptr(modelMatrices[0]), true);
     ImGui::End();
 
 #if _PROFILE_CODE
