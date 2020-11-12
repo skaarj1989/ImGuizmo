@@ -97,6 +97,18 @@ IMGUI_API void SetupWorkspace(const char *name, const ImVec2 &position,
 IMGUI_API void SetCamera(const float *view, const float *projection,
                          bool isOrtho);
 
+IMGUI_API void Begin(ImGuizmoMode_ mode, float *model);
+IMGUI_API void End();
+
+/** */
+IMGUI_API void Translate(const float *snap, float *deltaMatrix = nullptr);
+/** */
+IMGUI_API void Rotate(const float *snap, float *deltaMatrix = nullptr);
+/** */
+IMGUI_API void Scale(const float *snap, float *deltaMatrix = nullptr);
+/** */
+IMGUI_API void Cage(const float *bounds, const float *snap = nullptr);
+
 /**
  * @param [in/out] matrix Model matrix (column-major)
  * @param [out] deltaMatrix 

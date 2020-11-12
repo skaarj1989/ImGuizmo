@@ -1,4 +1,4 @@
-﻿#define _PROFILE_CODE 0
+﻿#define _PROFILE_CODE 1
 
 #include <array>
 #if _PROFILE_CODE
@@ -166,11 +166,25 @@ void EditTransform(float *model, bool editTransformDecomposition) {
     }
   }
 
+#if 1
+  ImGuizmo::Begin(currentGizmoMode, model);
+  if (gizmoFlags & ImGuizmoOperationFlags_Translate)
+    ImGuizmo::Translate(nullptr);
+  if (gizmoFlags & ImGuizmoOperationFlags_Rotate)
+    ImGuizmo::Rotate(nullptr);
+  if (gizmoFlags & ImGuizmoOperationFlags_Scale)
+    ImGuizmo::Scale(nullptr, nullptr);
   
+  if (boundSizing)
+    ImGuizmo::Cage(bounds, boundSizingSnap ? boundsSnap : nullptr);
+  
+  ImGuizmo::End();
 
+#else
   ImGuizmo::Manipulate(currentGizmoMode, gizmoFlags, model, nullptr,
     useSnap ? &snap[0] : nullptr/*, boundSizing ? bounds : nullptr,
     boundSizingSnap ? boundsSnap : nullptr*/);
+#endif
 
   /*
   ImGuizmo::Manipulate(
@@ -364,7 +378,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     ImGui::Begin("Editor");
-    for (int i = 0; i < 1; ++i)
+    for (int i = 0; i < gizmoCount; ++i)
       EditTransform(glm::value_ptr(modelMatrices[i]), true);
     ImGui::End();
 
