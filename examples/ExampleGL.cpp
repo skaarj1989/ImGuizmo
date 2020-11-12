@@ -8,13 +8,11 @@
 #endif
 
 #include "ImGuizmo.h"
-#include "imgui.h"
-#include "imgui_internal.h"
 
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
 
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
@@ -351,7 +349,7 @@ int main(int argc, char *argv[]) {
 
     const ImGuiViewport *mainViewport{ ImGui::GetMainViewport() };
     ImGuizmo::SetupWorkspace("ImGuizmo", mainViewport->Pos, mainViewport->Size);
-    ImGuizmo::SetViewer(glm::value_ptr(cameraView),
+    ImGuizmo::SetCamera(glm::value_ptr(cameraView),
                         glm::value_ptr(cameraProjection), !isPerspective);
 
     ImGuizmo::DrawGrid(glm::value_ptr(cameraView),

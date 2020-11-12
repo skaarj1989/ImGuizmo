@@ -94,7 +94,7 @@ IMGUI_API void SetupWorkspace(const char *name, const ImVec2 &position,
  * @param [in] view Camera view matrix (column-major)
  * @param [in] projection Camera projection matrix (column-major)
  */
-IMGUI_API void SetViewer(const float *view, const float *projection,
+IMGUI_API void SetCamera(const float *view, const float *projection,
                          bool isOrtho);
 
 /**
@@ -106,14 +106,6 @@ IMGUI_API bool Manipulate(ImGuizmoMode_ mode, ImGuizmoOperationFlags flags,
                           float *model, float *deltaMatrix = nullptr,
                           const float *snap = nullptr);
 
-/*
-IMGUI_API bool Manipulate(const float *view, const float *projection,
-                          ImGuizmoOperation_ operation, ImGuizmoMode_ mode,
-                          float *model, float *deltaMatrix = nullptr,
-                          const float *snap = nullptr,
-                          const float *localBounds = nullptr,
-                          const float *boundsSnap = nullptr);
- */
 /**
  * @note Please note that this cubeview is patented by Autodesk:
  * https://patents.google.com/patent/US7782319B2/en It seems to be a defensive

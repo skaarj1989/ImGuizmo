@@ -44,6 +44,6 @@ target_link_libraries(ImGuizmo
 		glm::glm
 )
 
-add_subdirectory(example)
+add_subdirectory(examples)
 
 include(GNUInstallDirs)

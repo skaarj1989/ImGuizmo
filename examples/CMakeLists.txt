@@ -1,0 +1,39 @@
+add_executable(ExampleGL)
+target_sources(ExampleGL
+  PRIVATE
+    "backends/imgui_impl_glfw.h"
+    "backends/imgui_impl_glfw.cpp"
+		"backends/imgui_impl_opengl3.h"
+		"backends/imgui_impl_opengl3.cpp"
+		"ExampleGL.cpp"
+)
+target_compile_definitions(ExampleGL PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD)
+target_link_libraries(ExampleGL
+	PRIVATE
+	  glfw
+		glad
+		glm::glm
+		ImGuizmo
+)
+
+add_executable(ExampleD3D12)
+target_sources(ExampleD3D12
+  PRIVATE
+    "backends/imgui_impl_win32.h"
+    "backends/imgui_impl_win32.cpp"
+		"backends/imgui_impl_dx12.h"
+		"backends/imgui_impl_dx12.cpp"
+		"ExampleD3D12.cpp"
+)
+target_link_libraries(ExampleD3D12
+	PRIVATE
+		d3d12.lib
+		d3dcompiler.lib
+		dxgi.lib
+)
+target_link_libraries(ExampleD3D12
+	PRIVATE
+		glm::glm
+		ImGuizmo
+)
+
