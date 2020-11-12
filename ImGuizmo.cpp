@@ -21,14 +21,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-/*
-  TODO:
-  - Reduce cognitive complexity
-  - Refactor GetTranslateType
-    - ComputeTripod ...
-  - Refactor GetScaleType
-*/
-
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #  define IMGUI_DEFINE_MATH_OPERATORS
 #endif
@@ -41,12 +33,30 @@
 #include "glm/gtx/compatibility.hpp"
 #include "glm/gtx/transform.hpp"
 
-//
-//
-//
+//-----------------------------------------------------------------------------
+// [SECTION] CONSTANTS
+//-----------------------------------------------------------------------------
+
+constexpr auto kPi = glm::pi<float>();
+constexpr auto kEpsilon = glm::epsilon<float>();
+
+const glm::vec3 kReferenceUp{ 0.0f, 1.0f, 0.0f };
+static const glm::vec3 kUnitDirection[3]{ { 1.0f, 0.0f, 0.0f },
+                                          { 0.0f, 1.0f, 0.0f },
+                                          { 0.0f, 0.0f, 1.0f } };
+
+constexpr float kQuadMin{ 0.5f };
+constexpr float kQuadMax{ 0.8f };
+static const float kQuadUV[]{ kQuadMin, kQuadMin, kQuadMin, kQuadMax,
+                              kQuadMax, kQuadMax, kQuadMax, kQuadMin };
+
+//-----------------------------------------------------------------------------
+// [SECTION] TYPES
+//-----------------------------------------------------------------------------
 
 using ImGuizmoMode = int;
 using ImGuizmoAxis = int;
+using ImGuizmoPlane = int;
 using ImGuizmoMoveType = int;
 
 enum ImGuizmoAxis_ {
@@ -56,7 +66,6 @@ enum ImGuizmoAxis_ {
 
   ImGuizmoAxis_COUNT
 };
-
 enum ImGuizmoPlane_ {
   ImGuizmoPlane_YZ,
   ImGuizmoPlane_ZX,
@@ -64,7 +73,6 @@ enum ImGuizmoPlane_ {
 
   ImGuizmoPlane_COUNT
 };
-
 enum ImGuizmoMoveType_ {
   ImGuizmoMoveType_None,
 
@@ -94,10 +102,6 @@ struct ImGuizmoRay {
   glm::vec3 end{ 0.0f };
   glm::vec3 direction{ 0.0f };
 };
-struct ImGuizmoPlane {
-  glm::vec3 normal{ 0.0f };
-  float distance;
-};
 
 enum ImGuizmoOperation_ {
   ImGuizmoOperation_Translate,
@@ -110,41 +114,21 @@ enum ImGuizmoOperation_ {
 };
 
 struct ImGuizmoWidget {
-  bool inUse{ false };
-
-  ImGuizmoMode_ mode{ ImGuizmoMode_Local };
-  ImGuizmoOperation_ operation{ ImGuizmoOperation_Translate };
-  ImGuizmoMoveType currentMoveType{ ImGuizmoMoveType_None };
-
-  glm::vec2 origin{ 0.0f };
-
-  struct {
-    glm::vec2 min, max;
-  } aabb;
-  float ringRadius{ 0.0f };
+  // @todo ...
 };
-
-static ImGuizmoWidget *CreateNewGizmo(const char *name /*flags?*/) {
-  bool OverGizmoOrigin();
-  bool OverAlignedRing();
-}
 
 //-----------------------------------------------------------------------------
 // [SECTION] CONTEXT
 //-----------------------------------------------------------------------------
 
+constexpr float kCircleRadius{ 6.0f };  // translation and scale dots
+constexpr float kLineThickness{ 3.0f }; // translation and scale axes
+
 struct ImGuizmoContext {
-  bool IsInsideViewport(const glm::vec2 &point) const;
-
-  bool OverGizmoOrigin(const glm::vec2 &mousePosition) const;
-  bool OverCameraAlignedRing(const glm::vec2 &mousePosition) const;
-
-  // ---
-
   bool enabled{ true };
+  ImGuizmoStyle style{};
 
   ImDrawList *drawList{ nullptr };
-  ImGuizmoStyle style{};
 
   ImRect viewport;
   float aspectRatio{ 1.0f };
@@ -173,9 +157,7 @@ struct ImGuizmoContext {
   glm::mat4 inversedModelMatrix;
 
   struct {
-    bool IsPresentlyUsed() const {
-      return inUse;
-    }
+    // @todo move to separate struct
 
     bool inUse{ false };
 
@@ -188,7 +170,6 @@ struct ImGuizmoContext {
 
     glm::vec3 modelScaleOrigin{ 1.0f };
     glm::vec3 modelRelativeOrigin{ 0.0f };
-
   } gizmo;
   struct {
     bool inUse{ false };
@@ -217,21 +198,18 @@ struct ImGuizmoContext {
   glm::vec3 scale{ 1.0f };
   glm::vec3 scaleValueOrigin{ 1.0f };
   glm::vec3 lastScale{ 1.0f };
-
-  // save axis factor when using gizmo
-  //bool belowAxisLimit[3];
-  //bool belowPlaneLimit[3];
 };
-static ImGuizmoContext GImGuizmo{};
+static ImGuizmoContext GImGuizmo;
 
 //-----------------------------------------------------------------------------
 // [SECTION] STYLING
 //-----------------------------------------------------------------------------
 
-namespace ImGuizmo {
-ImGuizmoStyle &GetStyle() { return GImGuizmo.style; }
-} // namespace ImGuizmo
+ImGuizmoStyle::ImGuizmoStyle() { ImGuizmo::StyleColorsDefault(this); }
 
+namespace ImGuizmo {
+
+ImGuizmoStyle &GetStyle() { return GImGuizmo.style; }
 void StyleColorsDefault(ImGuizmoStyle *dst) {
   ImGuizmoStyle *style{ dst ? dst : &ImGuizmo::GetStyle() };
   ImVec4 *colors{ style->Colors };
@@ -252,7 +230,6 @@ void StyleColorsDefault(ImGuizmoStyle *dst) {
   colors[ImGuizmoCol_PlaneZX] = ImVec4{ 0.411f, 0.686f, 0.098f, 0.60f };
   colors[ImGuizmoCol_PlaneXY] = ImVec4{ 0.215f, 0.509f, 0.823f, 0.60f };
 }
-ImGuizmoStyle::ImGuizmoStyle() { StyleColorsDefault(this); }
 
 static ImU32 GetColorU32(ImGuiCol idx, float alpha_mul = 1.0f) {
   const ImGuizmoStyle &style{ GImGuizmo.style };
@@ -282,7 +259,7 @@ static glm::vec2 WorldToScreen(const glm::vec3 &worldPos,
   glm::vec4 temp{ matrix * glm::vec4{ worldPos, 1.0f } };
   temp *= 0.5f / temp.w;
 
-  glm::vec2 screenPosition = glm::vec2{ temp } + 0.5f;
+  glm::vec2 screenPosition{ glm::vec2{ temp } + 0.5f };
   screenPosition.y = 1.0f - screenPosition.y;
   screenPosition *= size;
   screenPosition += position;
@@ -307,12 +284,36 @@ static ImGuizmoRay ScreenToWorldRay(const glm::vec2 &mousePosition,
                                 glm::vec4{ x, y, 0.0f, 1.0f } };
   rayStartWorldSpace *= 1.0f / rayStartWorldSpace.w;
   glm::vec4 rayEndWorldSpace{ inversedViewProj *
-                              glm::vec4{ x, y, 1.0f - FLT_EPSILON, 1.0f } };
+                              glm::vec4{ x, y, 1.0f - kEpsilon, 1.0f } };
   rayEndWorldSpace *= 1.0f / rayEndWorldSpace.w;
   return ImGuizmoRay{ rayStartWorldSpace, rayEndWorldSpace,
                       glm::normalize(rayEndWorldSpace - rayStartWorldSpace) };
 }
 
+static float GetParallelogram(const glm::vec4 &ptO, const glm::vec4 &ptA,
+                              const glm::vec4 &ptB) {
+  const ImGuizmoContext &g{ GImGuizmo };
+
+  glm::vec4 points[]{ ptO, ptA, ptB };
+  for (int i = 0; i < 3; ++i) {
+    points[i].w = 1.0f;
+    points[i] = g.modelViewProjMatrix * points[i];
+    // Check for axis aligned with camera direction
+    if (glm::abs(points[i].w) > kEpsilon) {
+      points[i] *= 1.0f / points[i].w;
+    }
+  }
+  glm::vec4 segA{ points[1] - points[0] };
+  segA.y /= g.aspectRatio;
+  glm::vec4 segB{ points[2] - points[0] };
+  segB.y /= g.aspectRatio;
+
+  const auto segAOrtho =
+    glm::normalize(glm::vec4{ -segA.y, segA.x, 0.0f, 0.0f });
+  const float dt{ glm::dot(segAOrtho, segB) };
+  const float surface{ glm::length(segA) * glm::abs(dt) };
+  return surface;
+}
 
 static glm::vec4 BuildPlane(const glm::vec3 &point, const glm::vec3 &normal) {
   const auto n = glm::normalize(normal);
@@ -326,7 +327,7 @@ static float IntersectRayPlane(const ImGuizmoRay &ray, const glm::vec4 &plane) {
   const float denom{ glm::dot(glm::vec3{ plane }, ray.direction) };
 
   // Normal is orthogonal to vector, cantt intersect
-  if (glm::abs(denom) < FLT_EPSILON) return -1.0f;
+  if (glm::abs(denom) < kEpsilon) return -1.0f;
   return -(num / denom);
 }
 
@@ -348,12 +349,12 @@ static float GetSegmentLengthClipSpace(const glm::vec3 &start,
 
   auto startOfSegment = g.modelViewProjMatrix * glm::vec4{ start, 1.0f };
   // Check for axis aligned with camera direction
-  if (glm::abs(startOfSegment.w) > FLT_EPSILON)
+  if (glm::abs(startOfSegment.w) > kEpsilon)
     startOfSegment *= 1.0f / startOfSegment.w;
 
   auto endOfSegment = g.modelViewProjMatrix * glm::vec4{ end, 1.0f };
   // Check for axis aligned with camera direction
-  if (glm::abs(endOfSegment.w) > FLT_EPSILON)
+  if (glm::abs(endOfSegment.w) > kEpsilon)
     endOfSegment *= 1.0f / endOfSegment.w;
 
   glm::vec2 clipSpaceAxis{ endOfSegment - startOfSegment };
@@ -361,46 +362,16 @@ static float GetSegmentLengthClipSpace(const glm::vec3 &start,
   return glm::length(clipSpaceAxis);
 }
 
-static float GetParallelogram(const glm::vec4 &ptO, const glm::vec4 &ptA,
-                              const glm::vec4 &ptB) {
-  const ImGuizmoContext &g{ GImGuizmo };
-
-  glm::vec4 points[]{ ptO, ptA, ptB };
-  for (int i = 0; i < 3; ++i) {
-    points[i].w = 1.0f;
-    points[i] = g.modelViewProjMatrix * points[i];
-    // Check for axis aligned with camera direction
-    if (glm::abs(points[i].w) > FLT_EPSILON) {
-      points[i] *= 1.0f / points[i].w;
-    }
-  }
-  glm::vec4 segA{ points[1] - points[0] };
-  segA.y /= g.aspectRatio;
-  glm::vec4 segB{ points[2] - points[0] };
-  segB.y /= g.aspectRatio;
-
-  const auto segAOrtho =
-    glm::normalize(glm::vec4{ -segA.y, segA.x, 0.0f, 0.0f });
-  const float dt{ glm::dot(segAOrtho, segB) };
-  const float surface{ glm::length(segA) * glm::abs(dt) };
-  return surface;
-}
-
 //-----------------------------------------------------------------------------
-// [SECTION] MISC HELPERS/UTILITIES
+// [SECTION] 
 //-----------------------------------------------------------------------------
 
 static void ComputeSnap(float &value, float snap) {
-  if (snap <= FLT_EPSILON) return;
+  if (snap <= kEpsilon) return;
 
-#if 0
-  float modulo{ fmodf(value, snap) };
-#else
   float modulo{ glm::fmod(value, snap) };
-#endif
-
-  constexpr float kSnapTension{ 0.5f };
   const float moduloRatio{ glm::abs(modulo) / snap };
+  constexpr float kSnapTension{ 0.5f };
   if (moduloRatio < kSnapTension) {
     value -= modulo;
   } else if (moduloRatio > (1.0f - kSnapTension)) {
@@ -413,7 +384,7 @@ static void ComputeSnap(glm::vec3 &value, const float *snap) {
 }
 
 //-----------------------------------------------------------------------------
-// [SECTION] MISC HELPERS/UTILITIES
+// [SECTION] 
 //-----------------------------------------------------------------------------
 
 static const char *to_str(ImGuizmoOperation_ operation) {
@@ -499,10 +470,17 @@ static bool CanScale(ImGuizmoMoveType moveType) {
   return moveType == ImGuizmoMoveType_None || IsScale(moveType);
 }
 
+static bool CanActivate() {
+  if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered() &&
+      !ImGui::IsAnyItemActive()) {
+    return true;
+  }
+  return false;
+}
+
 //-----------------------------------------------------------------------------
 // [SECTION]
 //-----------------------------------------------------------------------------
-
 
 static const int kTranslationInfoIndex[]{ 0, 0, 0, 1, 0, 0, 2, 0, 0, 1, 2,
                                           0, 0, 2, 0, 0, 1, 0, 0, 1, 2 };
@@ -561,175 +539,15 @@ static void DrawScaleInfo(const glm::vec2 &position, ImGuizmoMoveType moveType,
 }
 
 //-----------------------------------------------------------------------------
-// [SECTION] MISC HELPERS/UTILITIES
+// [SECTION] 
 //-----------------------------------------------------------------------------
 
-static constexpr auto PI = glm::pi<float>();
-
-const glm::vec3 kReferenceUp{ 0.0f, 1.0f, 0.0f };
-static const glm::vec3 kUnitDirection[3]{ { 1.0f, 0.0f, 0.0f },
-                                          { 0.0f, 1.0f, 0.0f },
-                                          { 0.0f, 0.0f, 1.0f } };
-
-constexpr auto kGrayColor = 0x999999;
 constexpr auto kDarkGrayColor = 0xFF404040;
 constexpr auto kMediumGrayColor = 0xFF808080;
 
-constexpr auto kLightGrayColor = 0xffdfdfdf;
-
-
-namespace priv {
-
-constexpr float kQuadMin{ 0.5f };
-constexpr float kQuadMax{ 0.8f };
-static const float kQuadUV[]{ kQuadMin, kQuadMin, kQuadMin, kQuadMax,
-                              kQuadMax, kQuadMax, kQuadMax, kQuadMin };
-
-// ---
-
-constexpr float kRotationRingSize{ 0.06f };
-constexpr int kArcSegmentCount{ 64 };
-
-
-static bool CanActivate() {
-  if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered() &&
-      !ImGui::IsAnyItemActive()) {
-    return true;
-  }
-  return false;
-}
-
-static bool IsAxisVisible(const glm::vec3 &dirAxis) {
-  constexpr float kVisibilityThreshold{ 0.02f };
-  const float axisLengthInClipSpace{ GetSegmentLengthClipSpace(
-    glm::vec3{ 0.0f }, dirAxis * GImGuizmo.screenFactor) };
-  return axisLengthInClipSpace > kVisibilityThreshold;
-}
-
-static bool IsPlaneVisible(const glm::vec3 &dir1, const glm::vec3 &dir2) {
-  constexpr float kVisibilityThreshold{ 0.0025f };
-  const float paraSurf{ GetParallelogram(
-    glm::vec4{ 0.0f }, glm::vec4{ dir1, 0.0f } * GImGuizmo.screenFactor,
-    glm::vec4{ dir2, 0.0f } * GImGuizmo.screenFactor) };
-  return paraSurf > kVisibilityThreshold;
-}
-
-static ImGuizmoMoveType GetTranslateType(const glm::vec2 &mousePosition) {
-  const ImGuizmoContext &g{ GImGuizmo };
-
-  if (g.OverGizmoOrigin(mousePosition))
-    return ImGuizmoMoveType_MoveScreen;
-
-  for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis) {
-    const glm::vec3 modelPosition{ g.modelMatrix[3] };
-    const glm::vec3 dirAxis{ g.modelMatrix *
-                             glm::vec4{ kUnitDirection[axis], 0.0f } };
-    const float length{ IntersectRayPlane(g.ray,
-                                          BuildPlane(modelPosition, dirAxis)) };
-    const glm::vec3 mousePosOnPlane{ g.ray.start + g.ray.direction * length };
-    const glm::vec2 mousePosOnPlaneInSS{ WorldToScreen(
-      mousePosOnPlane, g.camera.viewProjectionMatrix) };
-    const glm::vec2 axisStartOnScreen{ WorldToScreen(
-      modelPosition + dirAxis * g.screenFactor * 0.1f,
-      g.camera.viewProjectionMatrix) };
-    const glm::vec2 axisEndOnScreen{ WorldToScreen(
-      modelPosition + dirAxis * g.screenFactor,
-      g.camera.viewProjectionMatrix) };
-
-    const glm::vec2 closestPointOnAxis{ PointOnSegment(
-      mousePosOnPlaneInSS, axisStartOnScreen, axisEndOnScreen) };
-    constexpr float kTolerance{ 12.0f };
-    if (glm::length(closestPointOnAxis - mousePosOnPlaneInSS) < kTolerance)
-      return ImGuizmoMoveType_MoveX + axis;
-
-    // ---
-
-    const glm::vec3 planeDir1{
-      g.modelMatrix * glm::vec4{ kUnitDirection[(axis + 1) % 3], 0.0f }
-    };
-    const float dx{ glm::dot(planeDir1, (mousePosOnPlane - modelPosition) *
-                                          (1.0f / g.screenFactor)) };
-    const glm::vec3 planeDir2{
-      g.modelMatrix * glm::vec4{ kUnitDirection[(axis + 2) % 3], 0.0f }
-    };
-    const float dy{ glm::dot(planeDir2, (mousePosOnPlane - modelPosition) *
-                                          (1.0f / g.screenFactor)) };
-
-    if (IsPlaneVisible(planeDir1, planeDir2) && dx >= kQuadUV[0] &&
-        dx <= kQuadUV[4] && dy >= kQuadUV[1] && dy <= kQuadUV[3]) {
-      return ImGuizmoMoveType_MoveYZ + axis;
-    }
-  }
-
-  return ImGuizmoMoveType_None;
-}
-
-static bool IsOverRotationAxis(const glm::vec2 &mousePosition,
-                               ImGuizmoAxis axis) {
-  const ImGuizmoContext &g{ GImGuizmo };
-
-  const glm::vec4 pickupPlane{ BuildPlane(g.modelMatrix[3],
-                                          g.modelMatrix[axis]) };
-  const float length{ IntersectRayPlane(g.ray, pickupPlane) };
-  const glm::vec3 localPos{ glm::normalize(
-    g.ray.start + g.ray.direction * length - glm::vec3{ g.modelMatrix[3] }) };
-
-  // ... ?
-  if (glm::dot(localPos, g.ray.direction) > FLT_EPSILON) return false;
-
-  const glm::vec3 idealPosOnCircle{ glm::mat3{ g.inversedModelMatrix } *
-                                    localPos };
-  const glm::vec2 idealPosOnCircleScreen{ WorldToScreen(
-    idealPosOnCircle * g.screenFactor, g.modelViewProjMatrix) };
-
-  constexpr float kTolerance{ 8.0f };
-  const glm::vec2 distanceOnScreen{ idealPosOnCircleScreen - mousePosition };
-  return glm::length(distanceOnScreen) < kTolerance;
-}
-
-static ImGuizmoMoveType GetRotateType(const glm::vec2 &mousePosition) {
-  if (GImGuizmo.OverCameraAlignedRing(mousePosition))
-    return ImGuizmoMoveType_RotateScreen;
-
-  for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis)
-    if (IsOverRotationAxis(mousePosition, axis))
-      return ImGuizmoMoveType_RotateX + axis;
-
-  return ImGuizmoMoveType_None;
-}
-
-static ImGuizmoMoveType GetScaleType(const glm::vec2 &mousePosition) {
-  const ImGuizmoContext &g{ GImGuizmo };
-
-  if (g.OverGizmoOrigin(mousePosition))
-    return ImGuizmoMoveType_ScaleXYZ;
-
-  for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis) {
-    const glm::vec3 modelPosition{ g.modelMatrix[3] };
-
-    const glm::vec3 dirAxis{ g.modelMatrix *
-                             glm::vec4{ kUnitDirection[axis], 0.0f } };
-    const float length{ IntersectRayPlane(g.ray,
-                                          BuildPlane(modelPosition, dirAxis)) };
-    const glm::vec3 mousePosOnPlane{ g.ray.start + g.ray.direction * length };
-    const glm::vec2 mousePosOnPlaneInSS{ WorldToScreen(
-      mousePosOnPlane, g.camera.viewProjectionMatrix) };
-    const glm::vec2 axisStartOnScreen{ WorldToScreen(
-      modelPosition + dirAxis * g.screenFactor * 0.1f,
-      g.camera.viewProjectionMatrix) };
-    const glm::vec2 axisEndOnScreen{ WorldToScreen(
-      modelPosition + dirAxis * g.screenFactor,
-      g.camera.viewProjectionMatrix) };
-
-    const glm::vec2 closestPointOnAxis{ PointOnSegment(
-      mousePosOnPlaneInSS, axisStartOnScreen, axisEndOnScreen) };
-    constexpr float kTolerance{ 8.0f };
-    if (glm::length(closestPointOnAxis - mousePosOnPlaneInSS) < kTolerance)
-      return ImGuizmoMoveType_ScaleX + axis;
-  }
-
-  return ImGuizmoMoveType_None;
-}
+//-----------------------------------------------------------------------------
+// [SECTION] MISC HELPERS/UTILITIES
+//-----------------------------------------------------------------------------
 
 static void ComputeColors(ImU32 colors[7], ImGuizmoMoveType moveType,
                           ImGuizmoOperation_ operation) {
@@ -781,220 +599,123 @@ static void ComputeColors(ImU32 colors[7], ImGuizmoMoveType moveType,
   }
 }
 
-static float ComputeAngleOnPlane() {
-  const float length{ IntersectRayPlane(GImGuizmo.ray,
-                                        GImGuizmo.translationPlane) };
-  const glm::vec3 localPos{ glm::normalize(
-    GImGuizmo.ray.start + GImGuizmo.ray.direction * length -
-    glm::vec3{ GImGuizmo.modelMatrix[3] }) };
-
-  const glm::vec3 perpendicularVec{ glm::normalize(glm::cross(
-    GImGuizmo.rotationVectorSource, glm::vec3{ GImGuizmo.translationPlane })) };
-
-  const float acosAngle{ glm::clamp(
-    glm::dot(localPos, GImGuizmo.rotationVectorSource), -1.0f, 1.0f) };
-  float angle{ glm::acos(acosAngle) };
-  angle *= (glm::dot(localPos, perpendicularVec) < 0.0f) ? 1.0f : -1.0f;
-  return angle;
-}
-
-static void DrawTranslationGizmo(ImGuizmoMoveType moveType) {
+bool IsMouseOverGizmoOrigin() {
   const ImGuizmoContext &g{ GImGuizmo };
 
-  ImU32 colors[7]{};
-  ComputeColors(colors, moveType, ImGuizmoOperation_Translate);
+  constexpr float kMargin{ 10.0f };
+  ImRect aabb{ g.gizmo.origin - kMargin, g.gizmo.origin + kMargin };
+  return aabb.Contains(ImGui::GetIO().MousePos);
+}
+bool IsMouseOverRotationRing() {
+  const ImGuizmoContext &g{ GImGuizmo };
+
+  constexpr float kTolerance{ 1.0f };
+  const glm::vec2 deltaScreen{ ImGui::GetIO().MousePos - g.gizmo.origin };
+  const float dist{ glm::length(deltaScreen) };
+  return (
+    dist >=
+      (g.gizmo.ringRadius - (g.style.RotationRingThickness + kTolerance)) &&
+    dist < (g.gizmo.ringRadius + (g.style.RotationRingThickness + kTolerance)));
+}
+
+static bool IsAxisVisible(ImGuizmoAxis axis) {
+  constexpr float kVisibilityThreshold{ 0.02f };
+  const float axisLength{ GetSegmentLengthClipSpace(
+    glm::vec3{ 0.0f }, kUnitDirection[axis] * GImGuizmo.screenFactor) };
+  return axisLength > kVisibilityThreshold;
+
+  //return IsAxisVisible(kUnitDirection[axis]);
+}
+static bool IsPlaneVisible(ImGuizmoPlane plane) {
+  constexpr float kVisibilityThreshold{ 0.0025f };
+  const float surface{ GetParallelogram(
+    glm::vec4{ 0.0f },
+    glm::vec4{ kUnitDirection[(plane + 1) % 3], 0.0f } * GImGuizmo.screenFactor,
+    glm::vec4{ kUnitDirection[(plane + 2) % 3], 0.0f } *
+      GImGuizmo.screenFactor) };
+  return surface > kVisibilityThreshold;
+}
+
+static bool IsAxisVisible(const glm::vec3 &dirAxis) {
+  constexpr float kVisibilityThreshold{ 0.02f };
+  const float axisLength{ GetSegmentLengthClipSpace(
+    glm::vec3{ 0.0f }, dirAxis * GImGuizmo.screenFactor) };
+  return axisLength > kVisibilityThreshold;
+}
+static bool IsPlaneVisible(const glm::vec3 &dir1, const glm::vec3 &dir2) {
+  constexpr float kVisibilityThreshold{ 0.0025f };
+  const float surface{ GetParallelogram(
+    glm::vec4{ 0.0f }, glm::vec4{ dir1, 0.0f } * GImGuizmo.screenFactor,
+    glm::vec4{ dir2, 0.0f } * GImGuizmo.screenFactor) };
+  return surface > kVisibilityThreshold;
+}
+
+static bool IsMouseOverAxis() {
+  /*
+  const ImGuizmoContext &g{ GImGuizmo };
+  const float length{ IntersectRayPlane(g.ray,
+                                        BuildPlane(modelPosition, dirAxis)) };
+  const glm::vec3 mousePosOnPlane{ g.ray.start + g.ray.direction * length };
+  */
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] TRANSLATION
+//-----------------------------------------------------------------------------
+
+static ImGuizmoMoveType GetTranslateType() {
+  const ImGuizmoContext &g{ GImGuizmo };
+
+  if (IsMouseOverGizmoOrigin()) return ImGuizmoMoveType_MoveScreen;
 
   for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis) {
-    const glm::vec3 dirAxis { kUnitDirection[axis] };
-    if (IsAxisVisible(dirAxis)) {
-      const glm::vec2 tail{ WorldToScreen(dirAxis * 0.1f * g.screenFactor,
-                                          g.modelViewProjMatrix) };
-      const glm::vec2 head{ WorldToScreen(dirAxis * g.screenFactor,
-                                          g.modelViewProjMatrix) };
-
-      constexpr float kLineThickness{ 3.0f };
-      g.drawList->AddLine(tail, head, colors[axis + 1], kLineThickness);
-      constexpr float kArrowheadSize{ kLineThickness * 2.0f };
-      const glm::vec2 dir{ glm::normalize(g.gizmo.origin - head) *
-                           kArrowheadSize };
-      const glm::vec2 ortogonalDir{ dir.y, -dir.x };
-      const glm::vec2 a{ head + dir };
-      g.drawList->AddTriangleFilled(head - dir, a + ortogonalDir,
-                                    a - ortogonalDir, colors[axis + 1]);
-    }
-
-    const glm::vec3 planeDir1{ kUnitDirection[(axis + 1) % 3] };
-    const glm::vec3 planeDir2{ kUnitDirection[(axis + 2) % 3] };
-    if (IsPlaneVisible(planeDir1, planeDir2)) {
-      ImVec2 screenQuadPts[4]{};
-      for (int i = 0; i < 4; ++i) {
-        const glm::vec3 cornerWorldSpace{ (planeDir1 * kQuadUV[i * 2] +
-                                           planeDir2 * kQuadUV[i * 2 + 1]) *
-                                          g.screenFactor };
-        screenQuadPts[i] =
-          WorldToScreen(cornerWorldSpace, g.modelViewProjMatrix);
-      }
-
-      g.drawList->AddConvexPolyFilled(screenQuadPts, 4, colors[axis + 4]);
-      constexpr float kQuadBorder{ 1.5f };
-      g.drawList->AddPolyline(screenQuadPts, 4,
-                              GetColorU32(ImGuizmoCol_AxisX + axis), true,
-                              kQuadBorder);
-    }
-  }
-
-  const float kCircleRadius{ 6.0f };
-  if (moveType != ImGuizmoMoveType_None && g.gizmo.inUse) {
-    const glm::vec2 tail{ WorldToScreen(g.dragTranslationOrigin,
-                                        g.camera.viewProjectionMatrix) };
     const glm::vec3 &modelPosition{ g.modelMatrix[3] };
-    const glm::vec2 head{ WorldToScreen(modelPosition,
-                                        g.camera.viewProjectionMatrix) };
-    const glm::vec2 diff{ glm::normalize(head - tail) *
-                          (kCircleRadius - 1.0f) };
+    const glm::vec3 dirAxis{ g.modelMatrix *
+                             glm::vec4{ kUnitDirection[axis], 0.0f } };
+    const float length{ IntersectRayPlane(g.ray,
+                                          BuildPlane(modelPosition, dirAxis)) };
+    const glm::vec3 mousePosOnPlane{ g.ray.start + g.ray.direction * length };
 
-    constexpr auto kTranslationLineColor = 0xAAAAAAAA;
-    constexpr float kMargin{ 1.5f };
-    g.drawList->AddCircle(tail, kCircleRadius + kMargin, kTranslationLineColor);
-    g.drawList->AddCircle(head, kCircleRadius + kMargin, kTranslationLineColor);
-    g.drawList->AddLine(tail + diff, head - diff, kTranslationLineColor, 2.0f);
+    const glm::vec2 mousePosOnPlaneInSS{ WorldToScreen(
+      mousePosOnPlane, g.camera.viewProjectionMatrix) };
+    const glm::vec2 axisStartOnScreen{ WorldToScreen(
+      modelPosition + dirAxis * g.screenFactor * 0.1f,
+      g.camera.viewProjectionMatrix) };
+    const glm::vec2 axisEndOnScreen{ WorldToScreen(
+      modelPosition + dirAxis * g.screenFactor,
+      g.camera.viewProjectionMatrix) };
 
-    const glm::vec3 deltaInfo{ modelPosition - g.dragTranslationOrigin };
-    DrawTranslationInfo(head, moveType, deltaInfo);
-  }
+    const glm::vec2 closestPointOnAxis{ PointOnSegment(
+      mousePosOnPlaneInSS, axisStartOnScreen, axisEndOnScreen) };
+    constexpr float kTolerance{ 12.0f };
+    if (glm::length(closestPointOnAxis - mousePosOnPlaneInSS) < kTolerance)
+      return ImGuizmoMoveType_MoveX + axis;
 
-  g.drawList->AddCircleFilled(g.gizmo.origin, kCircleRadius, colors[0], 32);
-}
+    // ---
 
-static void DrawRotationGizmo(ImGuizmoMoveType moveType) {
-  ImGuizmoContext &g{ GImGuizmo };
-
-  ImU32 colors[7]{};
-  ComputeColors(colors, moveType, ImGuizmoOperation_Rotate);
-
-  const glm::vec3 &modelPosition{ g.modelMatrix[3] };
-  glm::vec3 cameraToModelNormalized{
-    g.camera.isOrtho ? glm::inverse(g.camera.viewMatrix)[2]
-                     : glm::normalize(modelPosition - g.camera.eye)
-  };
-  // Always face to camera
-  cameraToModelNormalized =
-    g.inversedModelMatrix * glm::vec4{ cameraToModelNormalized, 0.0f };
-
-  g.gizmo.ringRadius = kRotationRingSize * g.viewport.GetHeight();
-
-  for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis) {
-    const float angleStart{ (glm::atan(
-                              cameraToModelNormalized[(4 - axis) % 3],
-                              cameraToModelNormalized[(3 - axis) % 3])) +
-                            PI * 0.5f };
-
-    ImVec2 circlePos[kArcSegmentCount]{};
-    for (int i = 0; i < kArcSegmentCount; ++i) {
-      const float ng{ angleStart +
-                      PI * (static_cast<float>(i) / kArcSegmentCount) };
-      const glm::vec3 axisPos{ glm::cos(ng), glm::sin(ng), 0.0f };
-      const auto pos = glm::vec3{ axisPos[axis], axisPos[(axis + 1) % 3],
-                                  axisPos[(axis + 2) % 3] } *
-                       g.screenFactor;
-      circlePos[i] = WorldToScreen(pos, g.modelViewProjMatrix);
-    }
-
-    const float radiusAxis{ glm::length(g.gizmo.origin -
-                                        glm::vec2{ circlePos[0] }) };
-    if (radiusAxis > g.gizmo.ringRadius) g.gizmo.ringRadius = radiusAxis;
-    g.drawList->AddCircleFilled(circlePos[0], 6.5f,
-                                colors[ImGuizmoAxis_COUNT - axis], 32);
-    g.drawList->AddPolyline(circlePos, kArcSegmentCount,
-                            colors[ImGuizmoAxis_COUNT - axis], false, 2.0f);
-  }
-
-  // Circle parallel to view
-  g.drawList->AddCircle(g.gizmo.origin, g.gizmo.ringRadius, colors[0],
-                        kArcSegmentCount, g.style.RotationRingThickness);
-
-  if (moveType != ImGuizmoMoveType_None && g.gizmo.inUse) {
-    ImVec2 circlePos[kArcSegmentCount + 1]{ g.gizmo.origin };
-    for (int i = 1; i < kArcSegmentCount; ++i) {
-      const float ng{ g.rotationAngle *
-                      (static_cast<float>(i - 1) / (kArcSegmentCount - 1)) };
-      const glm::mat3 rotateVectorMatrix{ glm::rotate(
-        ng, glm::vec3{ g.translationPlane }) };
-      glm::vec3 pos{ rotateVectorMatrix * g.rotationVectorSource };
-      pos *= g.screenFactor;
-      circlePos[i] =
-        WorldToScreen(pos + modelPosition, g.camera.viewProjectionMatrix);
-    }
-
-    // Draw inner part ...
-    g.drawList->AddConvexPolyFilled(circlePos, kArcSegmentCount,
-                                  GetColorU32(ImGuizmoCol_Selection, 0.541f));
-    // ... and outline
-    g.drawList->AddPolyline(circlePos, kArcSegmentCount,
-                          GetColorU32(ImGuizmoCol_Selection), true, 2.0f);
-
-    DrawRotationInfo(circlePos[1], moveType, g.rotationAngle);
-  }
-}
-
-static void DrawScaleGizmo(ImGuizmoMoveType moveType) {
-  constexpr auto kCircleRadius = 6.0f; // @todo move to global?
-
-  const ImGuizmoContext &g{ GImGuizmo };
-
-  ImU32 colors[7]{};
-  ComputeColors(colors, moveType, ImGuizmoOperation_Scale);
-
-  const glm::vec3 scaleDisplay{ g.gizmo.inUse ? g.scale : glm::vec3{ 1.0f } };
-
-  for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis) {
-    const glm::vec3 dirAxis{ kUnitDirection[axis] };
-    if (IsAxisVisible(dirAxis)) {
-       const glm::vec2 tail{ WorldToScreen(dirAxis * 0.1f * g.screenFactor,
-                                           g.modelViewProjMatrix) };
-       const glm::vec2 head{ WorldToScreen(dirAxis * GImGuizmo.screenFactor,
-                                           g.modelViewProjMatrix) };
-       const glm::vec2 headScaled{ WorldToScreen(
-         (dirAxis * scaleDisplay[axis]) * g.screenFactor,
-         g.modelViewProjMatrix) };
-
-      constexpr float kLineThickness{ 3.0f };
-       if (moveType != ImGuizmoMoveType_None && g.gizmo.inUse) {
-         g.drawList->AddLine(tail, head, kDarkGrayColor, kLineThickness);
-         g.drawList->AddCircleFilled(head, kCircleRadius, kDarkGrayColor);
-       }
-
-      g.drawList->AddLine(tail, headScaled, colors[axis + 1], kLineThickness);
-      g.drawList->AddCircleFilled(headScaled, kCircleRadius, colors[axis + 1]);
-      
-      /*
-      constexpr float kQuadSize{kLineThickness * 2.0f};
-      const glm::vec2 dir{ glm::normalize(gContext.gizmo.origin - headScaled) *
-                           kQuadSize };
-      const glm::vec2 a{ headScaled + dir }, b{ headScaled - dir };
-      const ImVec2 points[4]{ 
-        a + glm::vec2{  dir.y, -dir.x },
-        a - glm::vec2{  dir.y, -dir.x },
-        b + glm::vec2{ -dir.y,  dir.x },
-        b - glm::vec2{ -dir.y,  dir.x }
-      };
-      drawList->AddConvexPolyFilled(points, 4, colors[axis + 1]);
-      */      
+    const glm::vec3 planeDir1{
+      g.modelMatrix * glm::vec4{ kUnitDirection[(axis + 1) % 3], 0.0f }
+    };
+    const float dx{ glm::dot(planeDir1, (mousePosOnPlane - modelPosition) *
+                                          (1.0f / g.screenFactor)) };
+    const glm::vec3 planeDir2{
+      g.modelMatrix * glm::vec4{ kUnitDirection[(axis + 2) % 3], 0.0f }
+    };
+    const float dy{ glm::dot(planeDir2, (mousePosOnPlane - modelPosition) *
+                                          (1.0f / g.screenFactor)) };
+    if (IsPlaneVisible(planeDir1, planeDir2) && dx >= kQuadUV[0] &&
+        dx <= kQuadUV[4] && dy >= kQuadUV[1] && dy <= kQuadUV[3]) {
+      return ImGuizmoMoveType_MoveYZ + axis;
     }
   }
 
-  // Draw circle at the begining of axes (center)
-  g.drawList->AddCircleFilled(g.gizmo.origin, kCircleRadius, colors[0], 32);
-
-  if (moveType != ImGuizmoMoveType_None && g.gizmo.inUse)
-    DrawScaleInfo(g.gizmo.origin, moveType, scaleDisplay);
+  return ImGuizmoMoveType_None;
 }
 
 static ImGuizmoMoveType BeginTranslation() {
   ImGuizmoContext &g{ GImGuizmo };
 
-  const glm::vec2 &mousePosition{ ImGui::GetIO().MousePos };
-  ImGuizmoMoveType moveType{ GetTranslateType(mousePosition) };
+  ImGuizmoMoveType moveType{ GetTranslateType() };
   if (moveType != ImGuizmoMoveType_None) ImGui::CaptureMouseFromApp();
   if (CanActivate() && moveType != ImGuizmoMoveType_None) {
     g.gizmo.inUse = true;
@@ -1003,11 +724,10 @@ static ImGuizmoMoveType BeginTranslation() {
     const glm::vec3 &modelPosition{ g.modelMatrix[3] };
     const glm::vec3 cameraToModelNormalized{ glm::normalize(modelPosition -
                                                             g.camera.eye) };
-    glm::vec3 movePlaneNormal[]{
-      g.modelMatrix[0], g.modelMatrix[1], g.modelMatrix[2],
-      g.modelMatrix[0], g.modelMatrix[1], g.modelMatrix[2],
-      -g.camera.forward
-    };
+    glm::vec3 movePlaneNormal[]{ g.modelMatrix[0], g.modelMatrix[1],
+                                 g.modelMatrix[2], g.modelMatrix[0],
+                                 g.modelMatrix[1], g.modelMatrix[2],
+                                 -g.camera.forward };
 
     for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis) {
       const glm::vec3 orthoVector{ glm::cross(movePlaneNormal[axis],
@@ -1024,8 +744,10 @@ static ImGuizmoMoveType BeginTranslation() {
     g.dragTranslationOrigin = modelPosition;
     g.gizmo.modelRelativeOrigin =
       (g.translationPlaneOrigin - modelPosition) * (1.0f / g.screenFactor);
+    g.dragOrigin = ImGui::GetIO().MousePos;
   }
 
+  
   return moveType;
 }
 static bool ContinueTranslation(ImGuizmoMoveType &moveType, glm::mat4 &matrix,
@@ -1044,8 +766,7 @@ static bool ContinueTranslation(ImGuizmoMoveType &moveType, glm::mat4 &matrix,
   // 1 axis constraint
   if (g.gizmo.currentMoveType >= ImGuizmoMoveType_MoveX &&
       g.gizmo.currentMoveType <= ImGuizmoMoveType_MoveZ) {
-    const int axisIndex{ g.gizmo.currentMoveType -
-                         ImGuizmoMoveType_MoveX };
+    const int axisIndex{ g.gizmo.currentMoveType - ImGuizmoMoveType_MoveX };
     const glm::vec3 axisValue{ g.modelMatrix[axisIndex] };
     const float lengthOnAxis{ glm::dot(axisValue, delta) };
     delta = axisValue * lengthOnAxis;
@@ -1104,14 +825,134 @@ static bool HandleTranslation(ImGuizmoMoveType &moveType, glm::mat4 &matrix,
   if (!g.gizmo.inUse) moveType = BeginTranslation();
   if (g.gizmo.inUse)
     return ContinueTranslation(moveType, matrix, deltaMatrix, snap);
+  
   return false;
+}
+
+static void DrawTranslationGizmo(ImGuizmoMoveType moveType) {
+  const ImGuizmoContext &g{ GImGuizmo };
+
+  ImU32 colors[7]{};
+  ComputeColors(colors, moveType, ImGuizmoOperation_Translate);
+
+  for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis) {
+    const glm::vec3 &dirAxis{ kUnitDirection[axis] };
+    if (IsAxisVisible(dirAxis)) {
+      const glm::vec2 tail{ WorldToScreen(dirAxis * 0.1f * g.screenFactor,
+                                          g.modelViewProjMatrix) };
+      const glm::vec2 head{ WorldToScreen(dirAxis * g.screenFactor,
+                                          g.modelViewProjMatrix) };
+
+      g.drawList->AddLine(tail, head, colors[axis + 1], kLineThickness);
+      constexpr float kArrowheadSize{ kLineThickness * 2.0f };
+      const glm::vec2 dir{ glm::normalize(g.gizmo.origin - head) *
+                           kArrowheadSize };
+      const glm::vec2 ortogonalDir{ dir.y, -dir.x };
+      const glm::vec2 a{ head + dir };
+      g.drawList->AddTriangleFilled(head - dir, a + ortogonalDir,
+                                    a - ortogonalDir, colors[axis + 1]);
+    }
+
+    const glm::vec3 &planeDir1{ kUnitDirection[(axis + 1) % 3] };
+    const glm::vec3 &planeDir2{ kUnitDirection[(axis + 2) % 3] };
+    if (IsPlaneVisible(planeDir1, planeDir2)) {
+      ImVec2 screenQuadPts[4]{};
+      for (int i = 0; i < 4; ++i) {
+        const glm::vec3 cornerWorldSpace{ (planeDir1 * kQuadUV[i * 2] +
+                                           planeDir2 * kQuadUV[i * 2 + 1]) *
+                                          g.screenFactor };
+        screenQuadPts[i] =
+          WorldToScreen(cornerWorldSpace, g.modelViewProjMatrix);
+      }
+
+      g.drawList->AddConvexPolyFilled(screenQuadPts, 4, colors[axis + 4]);
+      constexpr float kQuadBorder{ 1.5f };
+      g.drawList->AddPolyline(screenQuadPts, 4,
+                              GetColorU32(ImGuizmoCol_AxisX + axis), true,
+                              kQuadBorder);
+    }
+  }
+
+  if (moveType != ImGuizmoMoveType_None && g.gizmo.inUse) {
+    const glm::vec2 tail{ WorldToScreen(g.dragTranslationOrigin,
+                                        g.camera.viewProjectionMatrix) };
+    const glm::vec3 &modelPosition{ g.modelMatrix[3] };
+    const glm::vec2 head{ WorldToScreen(modelPosition,
+                                        g.camera.viewProjectionMatrix) };
+    const glm::vec2 diff{ glm::normalize(head - tail) *
+                          (kCircleRadius - 1.0f) };
+
+    constexpr auto kTranslationLineColor = 0xAAAAAAAA;
+    constexpr float kMargin{ 1.5f };
+    g.drawList->AddCircle(tail, kCircleRadius + kMargin, kTranslationLineColor);
+    g.drawList->AddCircle(head, kCircleRadius + kMargin, kTranslationLineColor);
+    g.drawList->AddLine(tail + diff, head - diff, kTranslationLineColor, 2.0f);
+
+    const glm::vec3 deltaInfo{ modelPosition - g.dragTranslationOrigin };
+    DrawTranslationInfo(head, moveType, deltaInfo);
+  }
+
+  // *  g.screenFactor
+  g.drawList->AddCircleFilled(g.gizmo.origin, kCircleRadius, colors[0], 32);
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] ROTATION
+//-----------------------------------------------------------------------------
+
+static float ComputeAngleOnPlane() {
+  const ImGuizmoContext &g{ GImGuizmo };
+
+  const float length{ IntersectRayPlane(g.ray, g.translationPlane) };
+  const glm::vec3 localPos{ glm::normalize(
+    g.ray.start + g.ray.direction * length - glm::vec3{ g.modelMatrix[3] }) };
+
+  const glm::vec3 perpendicularVec{ glm::normalize(
+    glm::cross(g.rotationVectorSource, glm::vec3{ g.translationPlane })) };
+
+  const float acosAngle{ glm::clamp(glm::dot(localPos, g.rotationVectorSource),
+                                    -1.0f, 1.0f) };
+  float angle{ glm::acos(acosAngle) };
+  angle *= (glm::dot(localPos, perpendicularVec) < 0.0f) ? 1.0f : -1.0f;
+  return angle;
+}
+
+static bool IsMouseOverRotationAxis(ImGuizmoAxis axis) {
+  const ImGuizmoContext &g{ GImGuizmo };
+
+  const glm::vec3 &modelPosition{ g.modelMatrix[3] };
+  const glm::vec4 pickupPlane{ BuildPlane(modelPosition, g.modelMatrix[axis]) };
+  const float length{ IntersectRayPlane(g.ray, pickupPlane) };
+  const glm::vec3 localPos{ glm::normalize(
+    g.ray.start + g.ray.direction * length - modelPosition) };
+
+  // ... ?
+  if (glm::dot(localPos, g.ray.direction) > kEpsilon) return false;
+
+  const glm::vec3 idealPosOnCircle{ glm::mat3{ g.inversedModelMatrix } *
+                                    localPos };
+  const glm::vec2 idealPosOnCircleScreen{ WorldToScreen(
+    idealPosOnCircle * g.screenFactor, g.modelViewProjMatrix) };
+
+  constexpr float kTolerance{ 8.0f };
+  const glm::vec2 distanceOnScreen{ idealPosOnCircleScreen -
+                                    ImGui::GetIO().MousePos };
+  return glm::length(distanceOnScreen) < kTolerance;
+}
+
+static ImGuizmoMoveType GetRotateType() {
+  const ImGuizmoContext &g{ GImGuizmo };
+  if (IsMouseOverRotationRing()) return ImGuizmoMoveType_RotateScreen;
+  for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis)
+    if (IsMouseOverRotationAxis(axis)) return ImGuizmoMoveType_RotateX + axis;
+  
+  return ImGuizmoMoveType_None;
 }
 
 static ImGuizmoMoveType BeginRotation() {
   ImGuizmoContext &g{ GImGuizmo };
-  const glm::vec2 &mousePosition{ ImGui::GetIO().MousePos };
 
-  ImGuizmoMoveType moveType{ GetRotateType(mousePosition) };
+  ImGuizmoMoveType moveType{ GetRotateType() };
   if (moveType != ImGuizmoMoveType_None) ImGui::CaptureMouseFromApp();
 
   if (CanActivate() && moveType != ImGuizmoMoveType_None) {
@@ -1138,6 +979,7 @@ static ImGuizmoMoveType BeginRotation() {
                               modelPosition };
     g.rotationVectorSource = glm::normalize(localPos);
     g.rotationAngleOrigin = ComputeAngleOnPlane();
+    g.dragOrigin = ImGui::GetIO().MousePos;
   }
 
   return moveType;
@@ -1148,7 +990,7 @@ static bool ContinueRotation(ImGuizmoMoveType &moveType, glm::mat4 &matrix,
 
   ImGui::CaptureMouseFromApp();
   g.rotationAngle = ComputeAngleOnPlane();
-  
+
   if (snap) ComputeSnap(g.rotationAngle, glm::radians(snap[0]));
 
   const glm::vec3 rotationAxisLocalSpace{ glm::normalize(
@@ -1181,7 +1023,6 @@ static bool ContinueRotation(ImGuizmoMoveType &moveType, glm::mat4 &matrix,
   moveType = g.gizmo.currentMoveType;
   return modified;
 }
-
 /**
  * @param [in/out] moveType
  * @param [out] matrix
@@ -1193,17 +1034,128 @@ static bool HandleRotation(ImGuizmoMoveType &moveType, glm::mat4 &matrix,
   IM_ASSERT(moveType == ImGuizmoMoveType_None || IsRotation(moveType));
 
   const ImGuizmoContext &g{ GImGuizmo };
+  
   if (!g.gizmo.inUse) moveType = BeginRotation();
   if (g.gizmo.inUse)
     return ContinueRotation(moveType, matrix, deltaMatrix, snap);
+  
   return false;
+}
+
+
+static void DrawRotationGizmo(ImGuizmoMoveType moveType) {
+  ImGuizmoContext &g{ GImGuizmo };
+
+  ImU32 colors[7]{};
+  ComputeColors(colors, moveType, ImGuizmoOperation_Rotate);
+
+  const glm::vec3 &modelPosition{ g.modelMatrix[3] };
+  glm::vec3 cameraToModelNormalized{
+    g.camera.isOrtho ? glm::inverse(g.camera.viewMatrix)[2]
+                     : glm::normalize(modelPosition - g.camera.eye)
+  };
+  // Always face to camera
+  cameraToModelNormalized =
+    g.inversedModelMatrix * glm::vec4{ cameraToModelNormalized, 0.0f };
+
+  constexpr float kRotationRingSize{ 0.06f };
+  g.gizmo.ringRadius = kRotationRingSize * g.viewport.GetHeight();
+
+  constexpr int kArcSegmentCount{ 64 };
+  for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis) {
+    const float angleStart{ (glm::atan(
+                              cameraToModelNormalized[(4 - axis) % 3],
+                              cameraToModelNormalized[(3 - axis) % 3])) +
+                            kPi * 0.5f };
+
+    ImVec2 circlePos[kArcSegmentCount]{};
+    for (int i = 0; i < kArcSegmentCount; ++i) {
+      const float ng{ angleStart +
+                      kPi * (static_cast<float>(i) / kArcSegmentCount) };
+      const glm::vec3 axisPos{ glm::cos(ng), glm::sin(ng), 0.0f };
+      const auto pos = glm::vec3{ axisPos[axis], axisPos[(axis + 1) % 3],
+                                  axisPos[(axis + 2) % 3] } *
+                       g.screenFactor;
+      circlePos[i] = WorldToScreen(pos, g.modelViewProjMatrix);
+    }
+
+    const float radiusAxis{ glm::length(g.gizmo.origin -
+                                        glm::vec2{ circlePos[0] }) };
+    if (radiusAxis > g.gizmo.ringRadius) g.gizmo.ringRadius = radiusAxis;
+    g.drawList->AddCircleFilled(circlePos[0], 6.5f,
+                                colors[ImGuizmoAxis_COUNT - axis], 32);
+    g.drawList->AddPolyline(circlePos, kArcSegmentCount,
+                            colors[ImGuizmoAxis_COUNT - axis], false, 2.0f);
+  }
+
+  // Circle parallel to view
+  g.drawList->AddCircle(g.gizmo.origin, g.gizmo.ringRadius, colors[0],
+                        kArcSegmentCount, g.style.RotationRingThickness);
+
+  if (moveType != ImGuizmoMoveType_None && g.gizmo.inUse) {
+    ImVec2 circlePos[kArcSegmentCount + 1]{ g.gizmo.origin };
+    for (int i = 1; i < kArcSegmentCount; ++i) {
+      const float ng{ g.rotationAngle *
+                      (static_cast<float>(i - 1) / (kArcSegmentCount - 1)) };
+      const glm::mat3 rotateVectorMatrix{ glm::rotate(
+        ng, glm::vec3{ g.translationPlane }) };
+      glm::vec3 pos{ rotateVectorMatrix * g.rotationVectorSource };
+      pos *= g.screenFactor;
+      circlePos[i] =
+        WorldToScreen(pos + modelPosition, g.camera.viewProjectionMatrix);
+    }
+
+    // Draw inner part ...
+    g.drawList->AddConvexPolyFilled(circlePos, kArcSegmentCount,
+                                  GetColorU32(ImGuizmoCol_Selection, 0.541f));
+    // ... and outline
+    g.drawList->AddPolyline(circlePos, kArcSegmentCount,
+                          GetColorU32(ImGuizmoCol_Selection), true, 2.0f);
+
+    DrawRotationInfo(circlePos[1], moveType, g.rotationAngle);
+  }
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] SCALE
+//-----------------------------------------------------------------------------
+
+static ImGuizmoMoveType GetScaleType() {
+  const ImGuizmoContext &g{ GImGuizmo };
+
+  if (IsMouseOverGizmoOrigin()) return ImGuizmoMoveType_ScaleXYZ;
+
+  for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis) {
+    const glm::vec3 modelPosition{ g.modelMatrix[3] };
+
+    const glm::vec3 dirAxis{ g.modelMatrix *
+                             glm::vec4{ kUnitDirection[axis], 0.0f } };
+    const float length{ IntersectRayPlane(g.ray,
+                                          BuildPlane(modelPosition, dirAxis)) };
+    const glm::vec3 mousePosOnPlane{ g.ray.start + g.ray.direction * length };
+    const glm::vec2 mousePosOnPlaneInSS{ WorldToScreen(
+      mousePosOnPlane, g.camera.viewProjectionMatrix) };
+    const glm::vec2 axisStartOnScreen{ WorldToScreen(
+      modelPosition + dirAxis * g.screenFactor * 0.1f,
+      g.camera.viewProjectionMatrix) };
+    const glm::vec2 axisEndOnScreen{ WorldToScreen(
+      modelPosition + dirAxis * g.screenFactor,
+      g.camera.viewProjectionMatrix) };
+
+    const glm::vec2 closestPointOnAxis{ PointOnSegment(
+      mousePosOnPlaneInSS, axisStartOnScreen, axisEndOnScreen) };
+    constexpr float kTolerance{ 8.0f };
+    if (glm::length(closestPointOnAxis - mousePosOnPlaneInSS) < kTolerance)
+      return ImGuizmoMoveType_ScaleX + axis;
+  }
+
+  return ImGuizmoMoveType_None;
 }
 
 static ImGuizmoMoveType BeginScale() {
   ImGuizmoContext &g{ GImGuizmo };
-  const glm::vec2 mousePosition{ ImGui::GetIO().MousePos };
 
-  ImGuizmoMoveType moveType{ GetScaleType(mousePosition) };
+  ImGuizmoMoveType moveType{ GetScaleType() };
   if (moveType != ImGuizmoMoveType_None) ImGui::CaptureMouseFromApp();
 
   if (CanActivate() && moveType != ImGuizmoMoveType_None) {
@@ -1224,10 +1176,10 @@ static ImGuizmoMoveType BeginScale() {
     g.gizmo.modelRelativeOrigin =
       (g.translationPlaneOrigin - modelPosition) * (1.0f / g.screenFactor);
 
-    for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis) {
+    for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis)
       g.scaleValueOrigin[axis] = glm::length(g.modelSourceMatrix[axis]);
-    }
-    g.dragOrigin = mousePosition;
+    
+    g.dragOrigin = ImGui::GetIO().MousePos;
   }
 
   return moveType;
@@ -1237,6 +1189,7 @@ static bool ContinueScale(ImGuizmoMoveType &moveType, glm::mat4 &matrix,
   ImGuizmoContext &g{ GImGuizmo };
 
   ImGui::CaptureMouseFromApp();
+
   const float length{ IntersectRayPlane(g.ray, g.translationPlane) };
   const glm::vec3 newPos{ g.ray.start + g.ray.direction * length };
   const glm::vec3 newOrigin{ newPos -
@@ -1257,6 +1210,7 @@ static bool ContinueScale(ImGuizmoMoveType &moveType, glm::mat4 &matrix,
     g.scale[axisIndex] = glm::max(ratio, 0.001f);
   } else {
     const float scaleDelta{ (ImGui::GetIO().MousePos.x - g.dragOrigin.x) * 0.01f };
+    ImGui::Text("ScaleDelta = %.2f", scaleDelta);
     g.scale = glm::vec3{ glm::max(1.0f + scaleDelta, 0.001f) };
   }
 
@@ -1281,7 +1235,6 @@ static bool ContinueScale(ImGuizmoMoveType &moveType, glm::mat4 &matrix,
   moveType = g.gizmo.currentMoveType;
   return modified;
 }
-
 /**
  * @param [in/out] moveType
  * @param [out] matrix
@@ -1293,20 +1246,68 @@ static bool HandleScale(ImGuizmoMoveType &moveType, glm::mat4 &matrix,
   IM_ASSERT(moveType == ImGuizmoMoveType_None || IsScale(moveType));
 
   const ImGuizmoContext &g{ GImGuizmo };
+
   if (!g.gizmo.inUse) moveType = BeginScale();
   if (g.gizmo.inUse)
     return ContinueScale(moveType, matrix, deltaMatrix, snap);
+  
   return false;
 }
 
+static void DrawScaleGizmo(ImGuizmoMoveType moveType) {
 
+  const ImGuizmoContext &g{ GImGuizmo };
 
+  ImU32 colors[7]{};
+  ComputeColors(colors, moveType, ImGuizmoOperation_Scale);
 
+  const glm::vec3 scaleDisplay{ g.gizmo.inUse ? g.scale : glm::vec3{ 1.0f } };
 
+  for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis) {
+    const glm::vec3 dirAxis{ kUnitDirection[axis] };
+    if (IsAxisVisible(dirAxis)) {
+       const glm::vec2 tail{ WorldToScreen(dirAxis * 0.1f * g.screenFactor,
+                                           g.modelViewProjMatrix) };
+       const glm::vec2 head{ WorldToScreen(dirAxis * GImGuizmo.screenFactor,
+                                           g.modelViewProjMatrix) };
+       const glm::vec2 headScaled{ WorldToScreen(
+         (dirAxis * scaleDisplay[axis]) * g.screenFactor,
+         g.modelViewProjMatrix) };
 
+       if (moveType != ImGuizmoMoveType_None && g.gizmo.inUse) {
+         g.drawList->AddLine(tail, head, kDarkGrayColor, kLineThickness);
+         g.drawList->AddCircleFilled(head, kCircleRadius, kDarkGrayColor);
+       }
 
+      g.drawList->AddLine(tail, headScaled, colors[axis + 1], kLineThickness);
+      g.drawList->AddCircleFilled(headScaled, kCircleRadius, colors[axis + 1]);
+      
+      /*
+      constexpr float kQuadSize{kLineThickness * 2.0f};
+      const glm::vec2 dir{ glm::normalize(gContext.gizmo.origin - headScaled) *
+                           kQuadSize };
+      const glm::vec2 a{ headScaled + dir }, b{ headScaled - dir };
+      const ImVec2 points[4]{ 
+        a + glm::vec2{  dir.y, -dir.x },
+        a - glm::vec2{  dir.y, -dir.x },
+        b + glm::vec2{ -dir.y,  dir.x },
+        b - glm::vec2{ -dir.y,  dir.x }
+      };
+      drawList->AddConvexPolyFilled(points, 4, colors[axis + 1]);
+      */      
+    }
+  }
 
+  // Draw circle at the begining of axes (center)
+  g.drawList->AddCircleFilled(g.gizmo.origin, kCircleRadius, colors[0], 32);
 
+  if (moveType != ImGuizmoMoveType_None && g.gizmo.inUse)
+    DrawScaleInfo(g.gizmo.origin, moveType, scaleDisplay);
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] CAGE
+//-----------------------------------------------------------------------------
 
 /**
  * @param [in] bounds
@@ -1316,26 +1317,26 @@ static bool HandleScale(ImGuizmoMoveType &moveType, glm::mat4 &matrix,
 static void HandleAndDrawLocalBounds(const float *bounds, glm::mat4 &matrix,
                                      const float *snapValues,
                                      ImGuizmoOperation_ operation) {
+  ImGuizmoContext &g{ GImGuizmo };
   const ImGuiIO &io{ ImGui::GetIO() };
-  ImDrawList *drawList{ GImGuizmo.drawList };
 
   // Compute best projection axis
   glm::vec3 axesWorldDirections[3]{};
   glm::vec3 bestAxisWorldDirection{ 0.0f };
   int axes[3]{ 0 };
   unsigned int numAxes{ 1 };
-  axes[0] = GImGuizmo.bounds.bestAxis;
+  axes[0] = g.bounds.bestAxis;
   int bestAxis = axes[0];
-  if (!GImGuizmo.bounds.inUse) {
+  if (!g.bounds.inUse) {
     numAxes = 0;
     float bestDot{ 0.0f };
     for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; axis++) {
       const glm::vec3 dirPlaneNormalWorld{ glm::normalize(
-        GImGuizmo.modelSourceMatrix * glm::vec4{ kUnitDirection[axis], 0.0f }) };
+        g.modelSourceMatrix * glm::vec4{ kUnitDirection[axis], 0.0f }) };
 
       const float dt{ glm::abs(
-        glm::dot(glm::normalize(GImGuizmo.camera.eye -
-                                glm::vec3{ GImGuizmo.modelSourceMatrix[3] }),
+        glm::dot(glm::normalize(g.camera.eye -
+                                glm::vec3{ g.modelSourceMatrix[3] }),
                  dirPlaneNormalWorld)) };
 
       if (dt >= bestDot) {
@@ -1385,16 +1386,16 @@ static void HandleAndDrawLocalBounds(const float *bounds, glm::mat4 &matrix,
       aabb[i][thirdAxis] = bounds[thirdAxis + 3 * ((i >> 1) ^ (i & 1))];
     }
 
-    unsigned int anchorAlpha{ GImGuizmo.enabled ? 0xFF000000 : 0x80000000 };
+    unsigned int anchorAlpha{ g.enabled ? 0xFF000000 : 0x80000000 };
 
-    const glm::mat4 boundsMVP{ GImGuizmo.camera.viewProjectionMatrix *
-                               GImGuizmo.modelSourceMatrix };
+    const glm::mat4 boundsMVP{ g.camera.viewProjectionMatrix *
+                               g.modelSourceMatrix };
 
     for (int i = 0; i < 4; i++) {
       const glm::vec2 bound1{ WorldToScreen(aabb[i], boundsMVP) };
       const glm::vec2 bound2{ WorldToScreen(aabb[(i + 1) % 4], boundsMVP) };
-      if (!GImGuizmo.IsInsideViewport(bound1) ||
-          !GImGuizmo.IsInsideViewport(bound2)) {
+      if (!g.viewport.Contains(bound1) ||
+          !g.viewport.Contains(bound2)) {
         continue;
       }
 
@@ -1407,7 +1408,7 @@ static void HandleAndDrawLocalBounds(const float *bounds, glm::mat4 &matrix,
         const float t2{ t1 + stepLength * 0.5f };
         const glm::vec2 tail{ glm::lerp(bound1, bound2, t1) };
         const glm::vec2 head{ glm::lerp(bound1, bound2, t2) };
-        drawList->AddLine(tail, head, 0xAAAAAA + anchorAlpha, 2.0f);
+        g.drawList->AddLine(tail, head, 0xAAAAAA + anchorAlpha, 2.0f);
       }
       const glm::vec3 midPoint{ (aabb[i] + aabb[(i + 1) % 4]) * 0.5f };
       const glm::vec2 midBound{ WorldToScreen(midPoint, boundsMVP) };
@@ -1421,13 +1422,13 @@ static void HandleAndDrawLocalBounds(const float *bounds, glm::mat4 &matrix,
       ImGuizmoMoveType moveType{ ImGuizmoMoveType_None };
       switch (operation) {
       case ImGuizmoOperation_Translate:
-        moveType = GetTranslateType(io.MousePos);
+        moveType = GetTranslateType();
         break;
       case ImGuizmoOperation_Rotate:
-        moveType = GetRotateType(io.MousePos);
+        moveType = GetRotateType();
         break;
       case ImGuizmoOperation_Scale:
-        moveType = GetScaleType(io.MousePos);
+        moveType = GetScaleType();
         break;
 
       case ImGuizmoOperation_Bounds:
@@ -1440,132 +1441,136 @@ static void HandleAndDrawLocalBounds(const float *bounds, glm::mat4 &matrix,
       }
 
       const auto kSelectionColor = 0x8A1080FF;
-      auto bigAnchorColor = (overBigAnchor && GImGuizmo.enabled)
+      auto bigAnchorColor = (overBigAnchor && g.enabled)
                               ? kSelectionColor
                               : (0xAAAAAA + anchorAlpha);
-      auto smallAnchorColor = (overSmallAnchor && GImGuizmo.enabled)
+      auto smallAnchorColor = (overSmallAnchor && g.enabled)
                                 ? kSelectionColor
                                 : (0xAAAAAA + anchorAlpha);
 
-      drawList->AddCircleFilled(bound1, bigAnchorRadius, 0xFF000000);
-      drawList->AddCircleFilled(bound1, bigAnchorRadius - 1.2f, bigAnchorColor);
-
-      drawList->AddCircleFilled(midBound, smallAnchorRadius, 0xFF000000);
-      drawList->AddCircleFilled(midBound, smallAnchorRadius - 1.2f,
+      g.drawList->AddCircleFilled(bound1, bigAnchorRadius, 0xFF000000);
+      g.drawList->AddCircleFilled(bound1, bigAnchorRadius - 1.2f, bigAnchorColor);
+      
+      g.drawList->AddCircleFilled(midBound, smallAnchorRadius, 0xFF000000);
+      g.drawList->AddCircleFilled(midBound, smallAnchorRadius - 1.2f,
                                 smallAnchorColor);
 
       int oppositeIndex{ (i + 2) % 4 };
       // Big anchor on corners
-      if (!GImGuizmo.bounds.inUse && GImGuizmo.enabled && overBigAnchor &&
+      if (!g.bounds.inUse && g.enabled && overBigAnchor &&
           CanActivate()) {
-        GImGuizmo.bounds.pivot =
-          GImGuizmo.modelSourceMatrix * glm::vec4{ aabb[(i + 2) % 4], 1.0f };
-        GImGuizmo.bounds.anchor =
-          GImGuizmo.modelSourceMatrix * glm::vec4{ aabb[i], 1.0f };
+        g.bounds.pivot =
+          g.modelSourceMatrix * glm::vec4{ aabb[(i + 2) % 4], 1.0f };
+        g.bounds.anchor =
+          g.modelSourceMatrix * glm::vec4{ aabb[i], 1.0f };
 
-        GImGuizmo.bounds.plane =
-          BuildPlane(GImGuizmo.bounds.anchor, bestAxisWorldDirection);
-        GImGuizmo.bounds.bestAxis = bestAxis;
-        GImGuizmo.bounds.axis[0] = secondAxis;
-        GImGuizmo.bounds.axis[1] = thirdAxis;
+        g.bounds.plane =
+          BuildPlane(g.bounds.anchor, bestAxisWorldDirection);
+        g.bounds.bestAxis = bestAxis;
+        g.bounds.axis[0] = secondAxis;
+        g.bounds.axis[1] = thirdAxis;
 
-        GImGuizmo.bounds.localPivot = glm::vec3{ 0.0f };
-        GImGuizmo.bounds.localPivot[secondAxis] =
+        g.bounds.localPivot = glm::vec3{ 0.0f };
+        g.bounds.localPivot[secondAxis] =
           aabb[oppositeIndex][secondAxis];
-        GImGuizmo.bounds.localPivot[thirdAxis] = aabb[oppositeIndex][thirdAxis];
+        g.bounds.localPivot[thirdAxis] = aabb[oppositeIndex][thirdAxis];
 
-        GImGuizmo.bounds.inUse = true;
-        //GImGuizmo.gizmo.editingID = GImGuizmo.gizmo.actualID;
-        GImGuizmo.bounds.matrix = GImGuizmo.modelSourceMatrix;
+        g.bounds.inUse = true;
+        //g.gizmo.editingID = g.gizmo.actualID;
+        g.bounds.matrix = g.modelSourceMatrix;
       }
       // Small anchor in the middle of the segment
-      if (!GImGuizmo.bounds.inUse && GImGuizmo.enabled && overSmallAnchor &&
+      if (!g.bounds.inUse && g.enabled && overSmallAnchor &&
           CanActivate()) {
         const glm::vec3 midPointOpposite{
           (aabb[(i + 2) % 4] + aabb[(i + 3) % 4]) * 0.5f
         };
-        GImGuizmo.bounds.pivot =
-          GImGuizmo.modelSourceMatrix * glm::vec4{ midPointOpposite, 1.0f };
-        GImGuizmo.bounds.anchor =
-          GImGuizmo.modelSourceMatrix * glm::vec4{ midPoint, 1.0f };
+        g.bounds.pivot =
+          g.modelSourceMatrix * glm::vec4{ midPointOpposite, 1.0f };
+        g.bounds.anchor =
+          g.modelSourceMatrix * glm::vec4{ midPoint, 1.0f };
 
-        GImGuizmo.bounds.plane =
-          BuildPlane(GImGuizmo.bounds.anchor, bestAxisWorldDirection);
-        GImGuizmo.bounds.bestAxis = bestAxis;
+        g.bounds.plane =
+          BuildPlane(g.bounds.anchor, bestAxisWorldDirection);
+        g.bounds.bestAxis = bestAxis;
         const int indices[]{ secondAxis, thirdAxis };
-        GImGuizmo.bounds.axis[0] = indices[i % 2];
-        GImGuizmo.bounds.axis[1] = -1;
+        g.bounds.axis[0] = indices[i % 2];
+        g.bounds.axis[1] = -1;
 
-        GImGuizmo.bounds.localPivot = glm::vec3{ 0.0f };
-        GImGuizmo.bounds.localPivot[GImGuizmo.bounds.axis[0]] =
+        g.bounds.localPivot = glm::vec3{ 0.0f };
+        g.bounds.localPivot[g.bounds.axis[0]] =
           aabb[oppositeIndex][indices[i % 2]];
 
-        GImGuizmo.bounds.inUse = true;
-        //GImGuizmo.gizmo.editingID = GImGuizmo.gizmo.actualID;
-        GImGuizmo.bounds.matrix = GImGuizmo.modelSourceMatrix;
+        g.bounds.inUse = true;
+        //g.gizmo.editingID = g.gizmo.actualID;
+        g.bounds.matrix = g.modelSourceMatrix;
       }
     }
 
-    if (GImGuizmo.bounds.inUse) {
+    if (g.bounds.inUse) {
       glm::mat4 scale{ 1.0f };
 
       // Compute projected mouse position on plane
-      const float len{ IntersectRayPlane(GImGuizmo.ray, GImGuizmo.bounds.plane) };
-      const glm::vec3 newPos{ GImGuizmo.ray.start +
-                              GImGuizmo.ray.direction * len };
+      const float len{ IntersectRayPlane(g.ray, g.bounds.plane) };
+      const glm::vec3 newPos{ g.ray.start +
+                              g.ray.direction * len };
 
       // Compute a reference and delta vectors base on mouse move
-      const glm::vec3 deltaVector{ glm::abs(newPos - GImGuizmo.bounds.pivot) };
-      const glm::vec3 referenceVector{ glm::abs(GImGuizmo.bounds.anchor -
-                                                GImGuizmo.bounds.pivot) };
+      const glm::vec3 deltaVector{ glm::abs(newPos - g.bounds.pivot) };
+      const glm::vec3 referenceVector{ glm::abs(g.bounds.anchor -
+                                                g.bounds.pivot) };
 
       // For 1 or 2 axes, compute a ratio that's used for scale and snap it
       // based on resulting length
       for (int i = 0; i < 2; i++) {
-        const int axisIndex1{ GImGuizmo.bounds.axis[i] };
+        const int axisIndex1{ g.bounds.axis[i] };
         if (axisIndex1 == -1) continue;
 
         float ratioAxis{ 1.0f };
-        const glm::vec3 axisDir{ glm::abs(GImGuizmo.bounds.matrix[axisIndex1]) };
+        const glm::vec3 axisDir{ glm::abs(g.bounds.matrix[axisIndex1]) };
 
         const float dtAxis{ glm::dot(axisDir, referenceVector) };
         const float boundSize{ bounds[axisIndex1 + 3] - bounds[axisIndex1] };
-        if (dtAxis > FLT_EPSILON)
+        if (dtAxis > kEpsilon)
           ratioAxis = glm::dot(axisDir, deltaVector) / dtAxis;
 
         if (snapValues) {
           float length{ boundSize * ratioAxis };
           ComputeSnap(length, snapValues[axisIndex1]);
-          if (boundSize > FLT_EPSILON) ratioAxis = length / boundSize;
+          if (boundSize > kEpsilon) ratioAxis = length / boundSize;
         }
         scale[axisIndex1] *= ratioAxis;
       }
 
       // Transform matrix
-      const glm::mat4 preScale{ glm::translate(-GImGuizmo.bounds.localPivot) };
-      const glm::mat4 postScale{ glm::translate(GImGuizmo.bounds.localPivot) };
-      matrix = GImGuizmo.bounds.matrix * postScale * scale * preScale;
+      const glm::mat4 preScale{ glm::translate(-g.bounds.localPivot) };
+      const glm::mat4 postScale{ glm::translate(g.bounds.localPivot) };
+      matrix = g.bounds.matrix * postScale * scale * preScale;
 
       char scaleInfo[512]{};
       ImFormatString(
         scaleInfo, sizeof(scaleInfo), "X: %.2f Y: %.2f Z: %.2f",
-        (bounds[3] - bounds[0]) * glm::length(GImGuizmo.bounds.matrix[0]) *
+        (bounds[3] - bounds[0]) * glm::length(g.bounds.matrix[0]) *
           glm::length(scale[0]),
-        (bounds[4] - bounds[1]) * glm::length(GImGuizmo.bounds.matrix[1]) *
+        (bounds[4] - bounds[1]) * glm::length(g.bounds.matrix[1]) *
           glm::length(scale[1]),
-        (bounds[5] - bounds[2]) * glm::length(GImGuizmo.bounds.matrix[2]) *
+        (bounds[5] - bounds[2]) * glm::length(g.bounds.matrix[2]) *
           glm::length(scale[2]));
 
-      DrawText(GImGuizmo.gizmo.origin, scaleInfo);
+      DrawText(g.gizmo.origin, scaleInfo);
     }
 
     if (!io.MouseDown[0]) {
-      GImGuizmo.bounds.inUse = false;
-      //GImGuizmo.gizmo.editingID = -1;
+      g.bounds.inUse = false;
+      //g.gizmo.editingID = -1;
     }
-    if (GImGuizmo.bounds.inUse) break;
+    if (g.bounds.inUse) break;
   }
 }
+
+//-----------------------------------------------------------------------------
+// [SECTION] 
+//-----------------------------------------------------------------------------
 
 /**
  * @param [out] frustum
@@ -1606,40 +1611,38 @@ void ComputeFrustumPlanes(glm::vec4 frustum[6], const float *clip) {
     frustum[i] = glm::normalize(frustum[i]);
 }
 
-}; // namespace priv
-
 //-----------------------------------------------------------------------------
 // [SECTION] PUBLIC INTERFACE
 //-----------------------------------------------------------------------------
 
-namespace ImGuizmo {
-
 void PrintContext() {
+  ImGuizmoContext &g{ GImGuizmo };
+
   ImGui::Begin("ImGuizmo::Debug");
 
   ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-  ImGui::Checkbox("InUse", &GImGuizmo.gizmo.inUse);
+  ImGui::Checkbox("InUse", &g.gizmo.inUse);
   ImGui::PopItemFlag();
 
   ImGui::Text("CurrentMoveType: %s",
-              to_str(ImGuizmoMoveType_(GImGuizmo.gizmo.currentMoveType)));
-  //ImGui::Text("Operation: %s", to_str(GImGuizmo.gizmo.operation));
+              to_str(ImGuizmoMoveType_(g.gizmo.currentMoveType)));
+  //ImGui::Text("Operation: %s", to_str(g.gizmo.operation));
 
-  //ImGui::Text("ID, actual = %d, editing: %d", GImGuizmo.gizmo.actualID,
-  //            GImGuizmo.gizmo.editingID);
+  //ImGui::Text("ID, actual = %d, editing: %d", g.gizmo.actualID,
+  //            g.gizmo.editingID);
 
   if (ImGui::TreeNode("Gizmo")) {
     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 
     ImGui::Text("origin (screen space): [%0.2f, %0.2f]",
-                GImGuizmo.gizmo.origin.x, GImGuizmo.gizmo.origin.y);
-    ImGui::Text("ringRadius: %.2f", GImGuizmo.gizmo.ringRadius);
+                g.gizmo.origin.x, g.gizmo.origin.y);
+    ImGui::Text("ringRadius: %.2f", g.gizmo.ringRadius);
 
     /*
-    ImGui::Text("mScreenSquareMin: [%.2f, %.2f]", GImGuizmo.gizmo.aabb.Min.x,
-                GImGuizmo.gizmo.aabb.Min.y);
-    ImGui::Text("mScreenSquareMax: [%.2f, %.2f]", GImGuizmo.gizmo.aabb.Max.x,
-                GImGuizmo.gizmo.aabb.Max.y);
+    ImGui::Text("mScreenSquareMin: [%.2f, %.2f]", g.gizmo.aabb.Min.x,
+                g.gizmo.aabb.Min.y);
+    ImGui::Text("mScreenSquareMax: [%.2f, %.2f]", g.gizmo.aabb.Max.x,
+                g.gizmo.aabb.Max.y);
                 */
 
     ImGui::PopItemFlag();
@@ -1649,10 +1652,10 @@ void PrintContext() {
   if (ImGui::TreeNode("Camera")) {
     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 
-    ImGui::InputFloat3("Right", &GImGuizmo.camera.right[0], "%.2f");
-    ImGui::InputFloat3("Up", &GImGuizmo.camera.up[0], "%.2f");
-    ImGui::InputFloat3("Forward", &GImGuizmo.camera.forward[0], "%.2f");
-    ImGui::InputFloat3("Eye", &GImGuizmo.camera.eye[0], "%.2f");
+    ImGui::InputFloat3("Right", &g.camera.right[0], "%.2f");
+    ImGui::InputFloat3("Up", &g.camera.up[0], "%.2f");
+    ImGui::InputFloat3("Forward", &g.camera.forward[0], "%.2f");
+    ImGui::InputFloat3("Eye", &g.camera.eye[0], "%.2f");
 
     ImGui::PopItemFlag();
     ImGui::TreePop();
@@ -1660,9 +1663,9 @@ void PrintContext() {
   if (ImGui::TreeNode("Ray")) {
     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 
-    ImGui::InputFloat3("start", &GImGuizmo.ray.start[0], "%.2f");
-    ImGui::InputFloat3("end", &GImGuizmo.ray.end[0], "%.2f");
-    ImGui::InputFloat3("direction", &GImGuizmo.ray.direction[0], "%.2f");
+    ImGui::InputFloat3("start", &g.ray.start[0], "%.2f");
+    ImGui::InputFloat3("end", &g.ray.end[0], "%.2f");
+    ImGui::InputFloat3("direction", &g.ray.direction[0], "%.2f");
 
     ImGui::PopItemFlag();
     ImGui::TreePop();
@@ -1671,13 +1674,13 @@ void PrintContext() {
   if (ImGui::TreeNode("Bounds")) {
     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 
-    ImGui::Checkbox("InUse", &GImGuizmo.bounds.inUse);
-    ImGui::InputFloat3("Pivot", &GImGuizmo.bounds.pivot[0]);
-    ImGui::InputFloat3("Anchor", &GImGuizmo.bounds.anchor[0]);
-    ImGui::InputFloat3("LocalPivot", &GImGuizmo.bounds.localPivot[0]);
-    ImGui::InputFloat4("Plane", &GImGuizmo.bounds.plane[0]);
-    ImGui::InputInt("BestAxis", &GImGuizmo.bounds.bestAxis);
-    ImGui::InputInt2("Axis", &GImGuizmo.bounds.axis[0]);
+    ImGui::Checkbox("InUse", &g.bounds.inUse);
+    ImGui::InputFloat3("Pivot", &g.bounds.pivot[0]);
+    ImGui::InputFloat3("Anchor", &g.bounds.anchor[0]);
+    ImGui::InputFloat3("LocalPivot", &g.bounds.localPivot[0]);
+    ImGui::InputFloat4("Plane", &g.bounds.plane[0]);
+    ImGui::InputInt("BestAxis", &g.bounds.bestAxis);
+    ImGui::InputInt2("Axis", &g.bounds.axis[0]);
 
     ImGui::PopItemFlag();
     ImGui::TreePop();
@@ -1687,12 +1690,12 @@ void PrintContext() {
     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 
     ImGui::InputFloat3("dragTranslationOrigin",
-                       &GImGuizmo.dragTranslationOrigin[0]);
+                       &g.dragTranslationOrigin[0]);
     ImGui::InputFloat3("lastTranslationDelta",
-                       &GImGuizmo.lastTranslationDelta[0]);
-    ImGui::InputFloat3("relativeOrigin", &GImGuizmo.gizmo.modelRelativeOrigin[0]);
+                       &g.lastTranslationDelta[0]);
+    ImGui::InputFloat3("relativeOrigin", &g.gizmo.modelRelativeOrigin[0]);
     ImGui::InputFloat3("translationPlaneOrigin",
-                       &GImGuizmo.translationPlaneOrigin[0]);
+                       &g.translationPlaneOrigin[0]);
 
     ImGui::PopItemFlag();
     ImGui::TreePop();
@@ -1701,9 +1704,9 @@ void PrintContext() {
     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 
     ImGui::InputFloat3("rotationVectorSource",
-                       &GImGuizmo.rotationVectorSource[0]);
-    ImGui::InputFloat("rotationAngle", &GImGuizmo.rotationAngle);
-    ImGui::InputFloat("rotationAngleOrigin", &GImGuizmo.rotationAngleOrigin);
+                       &g.rotationVectorSource[0]);
+    ImGui::InputFloat("rotationAngle", &g.rotationAngle);
+    ImGui::InputFloat("rotationAngleOrigin", &g.rotationAngleOrigin);
 
     ImGui::PopItemFlag();
     ImGui::TreePop();
@@ -1711,10 +1714,10 @@ void PrintContext() {
   if (ImGui::TreeNode("Scale")) {
     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 
-    ImGui::InputFloat3("modelScaleOrigin", &GImGuizmo.gizmo.modelScaleOrigin[0]);
-    ImGui::InputFloat3("scaleValueOrigin", &GImGuizmo.scaleValueOrigin[0]);
-    ImGui::InputFloat3("scale", &GImGuizmo.scale[0]);
-    ImGui::InputFloat3("lastScale", &GImGuizmo.lastScale[0]);
+    ImGui::InputFloat3("modelScaleOrigin", &g.gizmo.modelScaleOrigin[0]);
+    ImGui::InputFloat3("scaleValueOrigin", &g.scaleValueOrigin[0]);
+    ImGui::InputFloat3("scale", &g.scale[0]);
+    ImGui::InputFloat3("lastScale", &g.lastScale[0]);
 
     ImGui::PopItemFlag();
     ImGui::TreePop();
@@ -1856,22 +1859,22 @@ bool Manipulate(ImGuizmoMode_ mode, ImGuizmoOperationFlags flags, float *model,
   if (g.enabled && !g.bounds.inUse) {
     if (flags & ImGuizmoOperationFlags_Translate && CanTranslate(moveType)) {
       manipulated |=
-        priv::HandleTranslation(moveType, modelMatrix, deltaMatrix, snap);
+        HandleTranslation(moveType, modelMatrix, deltaMatrix, snap);
     }
     if (flags & ImGuizmoOperationFlags_Rotate && CanRotate(moveType)) {
       manipulated |=
-        priv::HandleRotation(moveType, modelMatrix, deltaMatrix, snap);
+        HandleRotation(moveType, modelMatrix, deltaMatrix, snap);
     }
     if (flags & ImGuizmoOperationFlags_Scale && CanScale(moveType)) {
       manipulated |=
-        priv::HandleScale(moveType, modelMatrix, deltaMatrix, snap);
+        HandleScale(moveType, modelMatrix, deltaMatrix, snap);
     }
 
-    if (!ImGui::GetIO().MouseDown[0]) GImGuizmo.gizmo.inUse = false;
+    if (!ImGui::GetIO().MouseDown[0]) g.gizmo.inUse = false;
   }
 
 /*
-  if (localBounds && !GImGuizmo.gizmo.inUse) {
+  if (localBounds && !g.gizmo.inUse) {
     priv::HandleAndDrawLocalBounds(localBounds, modelMatrix, boundsSnap,
                                    operation);
   }
@@ -1885,15 +1888,15 @@ bool Manipulate(ImGuizmoMode_ mode, ImGuizmoOperationFlags flags, float *model,
 
   if (!g.bounds.inUse) {
     if (flags & ImGuizmoOperationFlags_Translate) {
-      priv::DrawTranslationGizmo(
+      DrawTranslationGizmo(
         IsTranslation(moveType) ? moveType : ImGuizmoMoveType_None);
     }
     if (flags & ImGuizmoOperationFlags_Rotate) {
-      priv::DrawRotationGizmo(IsRotation(moveType) ? moveType
+      DrawRotationGizmo(IsRotation(moveType) ? moveType
                                                    : ImGuizmoMoveType_None);
     }
     if (flags & ImGuizmoOperationFlags_Scale) {
-      priv::DrawScaleGizmo(IsScale(moveType) ? moveType
+      DrawScaleGizmo(IsScale(moveType) ? moveType
                                              : ImGuizmoMoveType_None);
     }
   }
@@ -2152,6 +2155,8 @@ bool IsOver(ImGuizmoOperation_ operation) {
 
 void DrawCubes(const float *view, const float *projection,
                const float *modelMatrices, int modelMatrixCount) {
+  const ImGuizmoContext &g{ GImGuizmo };
+
   struct cubeFace_t {
     float z;
     ImVec2 faceCoordsScreen[4];
@@ -2165,7 +2170,7 @@ void DrawCubes(const float *view, const float *projection,
 
   const glm::mat4 viewProjectionMatrix{ glm::make_mat4(projection) *
                                         glm::make_mat4(view) };
-  priv::ComputeFrustumPlanes(frustum, glm::value_ptr(viewProjectionMatrix));
+  ComputeFrustumPlanes(frustum, glm::value_ptr(viewProjectionMatrix));
   int cubeFaceCount = 0;
   for (int cube = 0; cube < modelMatrixCount; ++cube) {
     const glm::mat4 modelMatrix{ glm::make_mat4(&modelMatrices[cube * 16]) };
@@ -2236,17 +2241,19 @@ void DrawCubes(const float *view, const float *projection,
 
   for (int iFace = 0; iFace < cubeFaceCount; ++iFace) {
     const cubeFace_t &cubeFace{ faces[iFace] };
-    GImGuizmo.drawList->AddConvexPolyFilled(cubeFace.faceCoordsScreen, 4,
+    g.drawList->AddConvexPolyFilled(cubeFace.faceCoordsScreen, 4,
                                            cubeFace.color);
   }
 }
 void DrawGrid(const float *view, const float *projection, const float *model,
               const float gridSize) {
+  ImGuizmoContext &g{ GImGuizmo };
+
   const glm::mat4 viewProjectionMatrix{ glm::make_mat4(projection) *
                                         glm::make_mat4(view) };
 
   glm::vec4 frustum[6]{};
-  priv::ComputeFrustumPlanes(frustum, glm::value_ptr(viewProjectionMatrix));
+  ComputeFrustumPlanes(frustum, glm::value_ptr(viewProjectionMatrix));
 
   const glm::mat4 modelViewProjMatrix{ viewProjectionMatrix *
                                        glm::make_mat4(model) };
@@ -2282,14 +2289,14 @@ void DrawGrid(const float *view, const float *projection, const float *model,
         ImU32 col{ kMediumGrayColor };
         // auto colr = ImGui::ColorConvertU32ToFloat4(0xFF909090);
 
-        col = (fmodf(fabsf(f), 10.0f) < FLT_EPSILON) ? 0xFF909090 : col;
-        col = (fabsf(f) < FLT_EPSILON) ? kDarkGrayColor : col;
+        col = (fmodf(fabsf(f), 10.0f) < kEpsilon) ? 0xFF909090 : col;
+        col = (fabsf(f) < kEpsilon) ? kDarkGrayColor : col;
 
         float thickness{ 1.0f };
-        thickness = (fmodf(fabsf(f), 10.0f) < FLT_EPSILON) ? 1.5f : thickness;
-        thickness = (fabsf(f) < FLT_EPSILON) ? 2.3f : thickness;
+        thickness = (fmodf(fabsf(f), 10.0f) < kEpsilon) ? 1.5f : thickness;
+        thickness = (fabsf(f) < kEpsilon) ? 2.3f : thickness;
 
-        GImGuizmo.drawList->AddLine(
+        g.drawList->AddLine(
           WorldToScreen(ptA, modelViewProjMatrix),
           WorldToScreen(ptB, modelViewProjMatrix), col, thickness);
       }
@@ -2327,7 +2334,7 @@ void RecomposeMatrix(const float *translation, const float *rotation,
 
   for (int axis = ImGuizmoAxis_X; axis < ImGuizmoAxis_COUNT; ++axis) {
     const auto validScale =
-      glm::abs(scale[axis]) < FLT_EPSILON ? 0.001f : scale[axis];
+      glm::abs(scale[axis]) < kEpsilon ? 0.001f : scale[axis];
     mat[axis] *= validScale;
   }
   mat[3] = glm::vec4{ glm::make_vec3(translation), 1.0f };
@@ -2335,21 +2342,3 @@ void RecomposeMatrix(const float *translation, const float *rotation,
 }
 
 }; // namespace ImGuizmo
-
-bool ImGuizmoContext::IsInsideViewport(const glm::vec2 &point) const {
-  return viewport.Contains(point);
-}
-bool ImGuizmoContext::OverGizmoOrigin(const glm::vec2 &mousePosition) const {
-  constexpr float kMargin{ 10.0f };
-  ImRect aabb{ gizmo.origin - kMargin, gizmo.origin + kMargin };
-  return aabb.Contains(mousePosition);
-}
-bool ImGuizmoContext::OverCameraAlignedRing(
-  const glm::vec2 &mousePosition) const {
-  constexpr float kTolerance{ 1.0f };
-  const glm::vec2 deltaScreen{ mousePosition - gizmo.origin };
-  const float dist{ glm::length(deltaScreen) };
-  return (
-    dist >= (gizmo.ringRadius - (style.RotationRingThickness + kTolerance)) &&
-    dist < (gizmo.ringRadius + (style.RotationRingThickness + kTolerance)));
-}

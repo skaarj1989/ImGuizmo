@@ -89,8 +89,7 @@ void EditTransform(float *model, bool editTransformDecomposition) {
   //static auto currentGizmoOperation{ ImGuizmoOperation_Translate };
   
   static auto currentGizmoMode{ ImGuizmoMode_Local };
-  static ImGuizmoOperationFlags gizmoFlags{ ImGuizmoOperationFlags_Translate |
-                                            ImGuizmoOperationFlags_Rotate };
+  static ImGuizmoOperationFlags gizmoFlags{ ImGuizmoOperationFlags_Translate  };
 
   static bool useSnap{ false };
   static float snap[3]{ 1.0f, 1.0f, 1.0f };
@@ -146,13 +145,13 @@ void EditTransform(float *model, bool editTransformDecomposition) {
     ImGui::Checkbox("", &useSnap);
     ImGui::SameLine();
 
+      ImGui::InputFloat("Angle Snap", &snap[0]);
     /*
     switch (currentGizmoOperation) {
     case ImGuizmoOperation_Translate:
       ImGui::InputFloat3("Snap", &snap[0]);
       break;
     case ImGuizmoOperation_Rotate:
-      ImGui::InputFloat("Angle Snap", &snap[0]);
       break;
     case ImGuizmoOperation_Scale:
       ImGui::InputFloat("Scale Snap", &snap[0]);
@@ -195,7 +194,6 @@ int main(int argc, char *argv[]) {
 #endif
 
   if (!glfwInit()) return 1;
-
   glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
@@ -314,7 +312,6 @@ int main(int argc, char *argv[]) {
                    -1000.f, glm::value_ptr(cameraProjection));
 #endif
     }
-    //ImGuizmo::SetOrthographic(!isPerspective);
 
     static bool gizmoEnabled{ true };
     if (ImGui::IsKeyPressed(GLFW_KEY_X)) gizmoEnabled = !gizmoEnabled;
@@ -369,7 +366,8 @@ int main(int argc, char *argv[]) {
 #endif
 
     ImGui::Begin("Editor");
-    EditTransform(glm::value_ptr(modelMatrices[0]), true);
+    for (int i = 0; i < 1; ++i)
+      EditTransform(glm::value_ptr(modelMatrices[i]), true);
     ImGui::End();
 
 #if _PROFILE_CODE
@@ -417,9 +415,9 @@ int main(int argc, char *argv[]) {
 
     // ---
 
-    int displayWidth, displayHeight;
-    glfwGetFramebufferSize(window, &displayWidth, &displayHeight);
-    glViewport(0, 0, displayWidth, displayHeight);
+    glm::ivec2 framebufferSize;
+    glfwGetFramebufferSize(window, &framebufferSize.x, &framebufferSize.y);
+    glViewport(0, 0, framebufferSize.x, framebufferSize.y);
     glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

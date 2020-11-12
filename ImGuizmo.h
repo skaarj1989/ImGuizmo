@@ -59,7 +59,6 @@ enum ImGuizmoMode_ {
   ImGuizmoMode_COUNT
 };
 
-
 enum ImGuizmoOperationFlags_ {
   ImGuizmoOperationFlags_None = 0,
 
@@ -75,6 +74,7 @@ namespace ImGuizmo {
 IMGUI_API void PrintContext();
 
 IMGUI_API ImGuizmoStyle &GetStyle(); 
+IMGUI_API void StyleColorsDefault(ImGuizmoStyle *dst);
 
 IMGUI_API void Enable(bool enabled);
 
