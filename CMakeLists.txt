@@ -36,6 +36,11 @@ add_subdirectory(extern)
 
 add_library(ImGuizmo )
 target_sources(ImGuizmo PRIVATE "ImGuizmo.h" "ImGuizmo.cpp")
+target_compile_definitions(ImGuizmo
+	PRIVATE
+		"-DIMGUI_DEFINE_MATH_OPERATORS"
+		"-DGLM_FORCE_SWIZZLE"
+)
 target_include_directories(ImGuizmo PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(ImGuizmo
 	PUBLIC

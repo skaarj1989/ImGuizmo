@@ -32,6 +32,8 @@ enum ImGuizmoCol_ {
   ImGuizmoCol_Inactive,
   ImGuizmoCol_Selection,
 
+  ImGuizmoCol_SpecialMove,
+
   ImGuizmoCol_AxisX,
   ImGuizmoCol_AxisY,
   ImGuizmoCol_AxisZ,
@@ -42,6 +44,7 @@ enum ImGuizmoCol_ {
 
   ImGuizmoCol_COUNT
 };
+
 struct ImGuizmoStyle {
   float GizmoScale{ 0.1f };
   float RotationRingThickness{ 4.5f };
@@ -58,16 +61,16 @@ enum ImGuizmoMode_ {
 
   ImGuizmoMode_COUNT
 };
+using ImGuizmoMode = int;
 
-enum ImGuizmoOperationFlags_ {
-  ImGuizmoOperationFlags_None = 0,
+enum ImGuizmoOperation_ {
+  ImGuizmoOperation_None,
 
-  ImGuizmoOperationFlags_Translate = 1 << 0,
-  ImGuizmoOperationFlags_Rotate = 1 << 1,
-  ImGuizmoOperationFlags_Scale = 1 << 2,
+  ImGuizmoOperation_Translate,
+  ImGuizmoOperation_Rotate,
+  ImGuizmoOperation_Scale,
 };
-
-using ImGuizmoOperationFlags = int;
+using ImGuizmoOperation = int;
 
 namespace ImGuizmo {
 
@@ -76,19 +79,21 @@ IMGUI_API void PrintContext();
 IMGUI_API ImGuizmoStyle &GetStyle(); 
 IMGUI_API void StyleColorsDefault(ImGuizmoStyle *dst);
 
-IMGUI_API void Enable(bool enabled);
-
-/** @param drawList */
-IMGUI_API void SetDrawlist(ImDrawList *drawList = nullptr);
 IMGUI_API void SetViewport(const ImVec2 &position, const ImVec2 &size);
 IMGUI_API void SetViewport(float x, float y, float width, float height);
+/** @param drawList */
+IMGUI_API void SetDrawlist(ImDrawList *drawList = nullptr);
 
 /**
- * @note Convenience function
- * @brief Creates transparent window and uses its drawList and viewport
+ * @note Convenience method
+ * @brief Creates transparent window and uses its DrawList and dimensions
  */
-IMGUI_API void SetupWorkspace(const char *name, const ImVec2 &position,
-                              const ImVec2 &size);
+IMGUI_API void CreateCanvas(const char *name);
+IMGUI_API void CreateCanvas(const char *name, const ImVec2 &position,
+                            const ImVec2 &size);
+/** @note Convenience method */
+IMGUI_API void Manipulate(ImGuizmoMode mode, ImGuizmoOperation operation,
+                          float *model, const float *snap = nullptr);
 
 /**
  * @param [in] view Camera view matrix (column-major)
@@ -97,26 +102,29 @@ IMGUI_API void SetupWorkspace(const char *name, const ImVec2 &position,
 IMGUI_API void SetCamera(const float *view, const float *projection,
                          bool isOrtho);
 
-IMGUI_API void Begin(ImGuizmoMode_ mode, float *model);
+/** 
+ * @param [in] model Model matrix (column-major)
+ */
+IMGUI_API bool Begin(ImGuizmoMode mode, float *model);
+/**
+ * Saves result to locked model matrix if manipulation has been made between
+ * Begin/End
+ */
 IMGUI_API void End();
 
-/** */
-IMGUI_API void Translate(const float *snap, float *deltaMatrix = nullptr);
-/** */
-IMGUI_API void Rotate(const float *snap, float *deltaMatrix = nullptr);
-/** */
-IMGUI_API void Scale(const float *snap, float *deltaMatrix = nullptr);
-/** */
-IMGUI_API void Cage(const float *bounds, const float *snap = nullptr);
+/** @param snap */
+IMGUI_API void Translate(const float *snap = nullptr);
+/** @param snap */
+IMGUI_API void Rotate(const float *snap = nullptr);
+/** @param snap */
+IMGUI_API void Scale(const float *snap = nullptr);
 
-/**
- * @param [in/out] matrix Model matrix (column-major)
- * @param [out] deltaMatrix 
- * @param [in] snap vec3
- */
-IMGUI_API bool Manipulate(ImGuizmoMode_ mode, ImGuizmoOperationFlags flags,
-                          float *model, float *deltaMatrix = nullptr,
-                          const float *snap = nullptr);
+/** @param snap */
+IMGUI_API void Cage(const float *bounds, const float *snap);
+
+IMGUI_API void ViewManip(float *view, const float length,
+                         const ImVec2 &position, const ImVec2 &size,
+                         ImU32 backgroundColor = 0x10101010);
 
 /**
  * @note Please note that this cubeview is patented by Autodesk:
@@ -126,28 +134,23 @@ IMGUI_API bool Manipulate(ImGuizmoMode_ mode, ImGuizmoOperationFlags flags,
  * 
  * @param [in] view Camera view, column-major matrix
  */
-IMGUI_API void ViewManipulate(float *view, const float length, ImVec2 position,
-                              ImVec2 size, ImU32 backgroundColor);
-
-/** @return true if mouse IsOver or if the gizmo is in moving state */
-IMGUI_API bool IsUsing();
-/** @return if mouse is over any gizmo control (axis, plane or screen component)
- */
-//IMGUI_API bool IsOver();
-/** @return true if the cursor is over the operations gizmo */
-//IMGUI_API bool IsOver(ImGuizmoOperation_ op);
+IMGUI_API void ViewManipulate(float *view, const float length,
+                              const ImVec2 &position, const ImVec2 &size,
+                              ImU32 backgroundColor);
 
 //
 //
 //
 
+/** @todo Remove me */
 IMGUI_API void DrawCubes(const float *view, const float *projection,
                          const float *models, int modelCount);
+/** @todo Remove me */
 IMGUI_API void DrawGrid(const float *view, const float *projection,
                         const float *model, const float gridSize);
 
 /**
- * @param [in] matrix Column-major matrix
+ * @param [in] matrix Input matrix (column-major)
  * @param [out] t vec3 Translation
  * @param [out] r vec3 Rotation
  * @param [out] s vec3 Scale
@@ -158,7 +161,7 @@ IMGUI_API void DecomposeMatrix(const float *matrix, float *t, float *r,
  * @param [in] t vec3 Translation
  * @param [in] r vec3 Rotation
  * @param [in] s vec3 Scale
- * @param [out] matrix Column-major matrix
+ * @param [out] matrix Result matrix (column-major)
  */
 IMGUI_API void RecomposeMatrix(const float *t, const float *r, const float *s,
                                float *matrix);
