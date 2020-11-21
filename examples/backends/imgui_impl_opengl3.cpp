@@ -646,37 +646,37 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
         "}\n";
 
     // Select shaders matching our GLSL versions
-    const GLchar* vertex_shader = NULL;
-    const GLchar* fragment_shader = NULL;
+    const GLchar* VertexShader = NULL;
+    const GLchar* FragmentShader = NULL;
     if (glsl_version < 130)
     {
-        vertex_shader = vertex_shader_glsl_120;
-        fragment_shader = fragment_shader_glsl_120;
+        VertexShader = vertex_shader_glsl_120;
+        FragmentShader = fragment_shader_glsl_120;
     }
     else if (glsl_version >= 410)
     {
-        vertex_shader = vertex_shader_glsl_410_core;
-        fragment_shader = fragment_shader_glsl_410_core;
+        VertexShader = vertex_shader_glsl_410_core;
+        FragmentShader = fragment_shader_glsl_410_core;
     }
     else if (glsl_version == 300)
     {
-        vertex_shader = vertex_shader_glsl_300_es;
-        fragment_shader = fragment_shader_glsl_300_es;
+        VertexShader = vertex_shader_glsl_300_es;
+        FragmentShader = fragment_shader_glsl_300_es;
     }
     else
     {
-        vertex_shader = vertex_shader_glsl_130;
-        fragment_shader = fragment_shader_glsl_130;
+        VertexShader = vertex_shader_glsl_130;
+        FragmentShader = fragment_shader_glsl_130;
     }
 
     // Create shaders
-    const GLchar* vertex_shader_with_version[2] = { g_GlslVersionString, vertex_shader };
+    const GLchar* vertex_shader_with_version[2] = { g_GlslVersionString, VertexShader };
     g_VertHandle = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(g_VertHandle, 2, vertex_shader_with_version, NULL);
     glCompileShader(g_VertHandle);
     CheckShader(g_VertHandle, "vertex shader");
 
-    const GLchar* fragment_shader_with_version[2] = { g_GlslVersionString, fragment_shader };
+    const GLchar* fragment_shader_with_version[2] = { g_GlslVersionString, FragmentShader };
     g_FragHandle = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(g_FragHandle, 2, fragment_shader_with_version, NULL);
     glCompileShader(g_FragHandle);

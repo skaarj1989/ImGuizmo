@@ -2727,7 +2727,7 @@ typedef struct stbtt__active_edge
    int direction;
    #elif STBTT_RASTERIZER_VERSION==2
    float fx,fdx,fdy;
-   float direction;
+   float Direction;
    float sy;
    float ey;
    #else
@@ -2773,7 +2773,7 @@ static stbtt__active_edge *stbtt__new_active(stbtt__hheap *hh, stbtt__edge *e, i
    z->fdy = dxdy != 0.0f ? (1.0f/dxdy) : 0.0f;
    z->fx = e->x0 + dxdy * (start_point - e->y0);
    z->fx -= off_x;
-   z->direction = e->invert ? 1.0f : -1.0f;
+   z->Direction = e->invert ? 1.0f : -1.0f;
    z->sy = e->y0;
    z->ey = e->y1;
    z->next = 0;
@@ -2961,12 +2961,12 @@ static void stbtt__handle_clipped_edge(float *scanline, int x, stbtt__active_edg
       STBTT_assert(x1 >= x && x1 <= x+1);
 
    if (x0 <= x && x1 <= x)
-      scanline[x] += e->direction * (y1-y0);
+      scanline[x] += e->Direction * (y1-y0);
    else if (x0 >= x+1 && x1 >= x+1)
       ;
    else {
       STBTT_assert(x0 >= x && x0 <= x+1 && x1 >= x && x1 <= x+1);
-      scanline[x] += e->direction * (y1-y0) * (1-((x0-x)+(x1-x))/2); // coverage = 1 - average x position
+      scanline[x] += e->Direction * (y1-y0) * (1-((x0-x)+(x1-x))/2); // coverage = 1 - average x position
    }
 }
 
@@ -3026,8 +3026,8 @@ static void stbtt__fill_active_edges_new(float *scanline, float *scanline_fill, 
                int x = (int) x_top;
                height = sy1 - sy0;
                STBTT_assert(x >= 0 && x < len);
-               scanline[x] += e->direction * (1-((x_top - x) + (x_bottom-x))/2)  * height;
-               scanline_fill[x] += e->direction * height; // everything right of this pixel is filled
+               scanline[x] += e->Direction * (1-((x_top - x) + (x_bottom-x))/2)  * height;
+               scanline_fill[x] += e->Direction * height; // everything right of this pixel is filled
             } else {
                int x,x1,x2;
                float y_crossing, step, sign, area;
@@ -3051,7 +3051,7 @@ static void stbtt__fill_active_edges_new(float *scanline, float *scanline_fill, 
                // compute intersection with y axis at x1+1
                y_crossing = (x1+1 - x0) * dy + y_top;
 
-               sign = e->direction;
+               sign = e->Direction;
                // area of the rectangle covered from y0..y_crossing
                area = sign * (y_crossing-sy0);
                // area of the triangle (x_top,y0), (x+1,y0), (x+1,y_crossing)
@@ -3168,8 +3168,8 @@ static void stbtt__rasterize_sorted_edges(stbtt__bitmap *result, stbtt__edge *e,
          stbtt__active_edge * z = *step;
          if (z->ey <= scan_y_top) {
             *step = z->next; // delete from list
-            STBTT_assert(z->direction);
-            z->direction = 0;
+            STBTT_assert(z->Direction);
+            z->Direction = 0;
             stbtt__hheap_free(&hh, z);
          } else {
             step = &((*step)->next); // advance through list

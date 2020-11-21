@@ -30,7 +30,7 @@ enum ImGuizmoCol_ {
   ImGuizmoCol_TextShadow,
 
   ImGuizmoCol_Inactive,
-  ImGuizmoCol_Selection,
+  ImGuizmoCol_Hovered,
 
   ImGuizmoCol_SpecialMove,
 
@@ -44,10 +44,11 @@ enum ImGuizmoCol_ {
 
   ImGuizmoCol_COUNT
 };
+using ImGuizmoCol = int;
 
 struct ImGuizmoStyle {
   float GizmoScale{ 0.1f };
-  float RotationRingThickness{ 4.5f };
+  float RotationRingThickness{ 3.5f };
 
   float Alpha{ 1.0f };
   ImVec4 Colors[ImGuizmoCol_COUNT];
@@ -61,28 +62,59 @@ enum ImGuizmoMode_ {
 
   ImGuizmoMode_COUNT
 };
-using ImGuizmoMode = int;
+using ImGuizmoMode = unsigned int;
 
 enum ImGuizmoOperation_ {
-  ImGuizmoOperation_None,
+  ImGuizmoOperation_None = 0,
 
   ImGuizmoOperation_Translate,
   ImGuizmoOperation_Rotate,
   ImGuizmoOperation_Scale,
 };
-using ImGuizmoOperation = int;
+using ImGuizmoOperation = unsigned int;
+
+enum ImGuizmoAxisFlags_ {
+  ImGuizmoAxisFlags_None = 0,
+
+  ImGuizmoAxisFlags_X = 1 << 0,
+  ImGuizmoAxisFlags_Y = 1 << 1,
+  ImGuizmoAxisFlags_Z = 1 << 2,
+
+  ImGuizmoAxisFlags_YZ = ImGuizmoAxisFlags_Y | ImGuizmoAxisFlags_Z,
+  ImGuizmoAxisFlags_ZX = ImGuizmoAxisFlags_Z | ImGuizmoAxisFlags_X,
+  ImGuizmoAxisFlags_XY = ImGuizmoAxisFlags_X | ImGuizmoAxisFlags_Y,
+
+  ImGuizmoAxisFlags_ALL =
+    ImGuizmoAxisFlags_X | ImGuizmoAxisFlags_Y | ImGuizmoAxisFlags_Z
+};
+using ImGuizmoAxisFlags = unsigned int;
+
+enum ImGuizmoConfigFlags_ {
+  ImGuizmoConfigFlags_None = 0,
+
+  ImGuizmoConfigFlags_CloakOnManipulate = 1 << 0, // Render only active manipulation
+  ImGuizmoConfigFlags_HideLocked        = 1 << 1, // Hides locked axes instead of drawing as inactive
+  ImGuizmoConfigFlags_HasReversing      = 1 << 2  // Cancel active manipulation on RMB
+};
+using ImGuizmoConfigFlags = unsigned int;
 
 namespace ImGuizmo {
 
 IMGUI_API void PrintContext();
 
 IMGUI_API ImGuizmoStyle &GetStyle(); 
-IMGUI_API void StyleColorsDefault(ImGuizmoStyle *dst);
+IMGUI_API void StyleColorsClassic(ImGuizmoStyle *dst = nullptr);
+IMGUI_API void StyleColorsBlender(ImGuizmoStyle *dst = nullptr);
+IMGUI_API void StyleColorsUnreal(ImGuizmoStyle *dst = nullptr);
+
+IMGUI_API void ShowStyleEditor(ImGuizmoStyle *ref = nullptr);
+IMGUI_API bool ShowStyleSelector(const char *label);
+IMGUI_API const char *GetStyleColorName(ImGuizmoCol idx);  
 
 IMGUI_API void SetViewport(const ImVec2 &position, const ImVec2 &size);
 IMGUI_API void SetViewport(float x, float y, float width, float height);
 /** @param drawList */
-IMGUI_API void SetDrawlist(ImDrawList *drawList = nullptr);
+IMGUI_API void SetDrawlist(ImDrawList *draw_list = nullptr);
 
 /**
  * @note Convenience method
@@ -91,8 +123,12 @@ IMGUI_API void SetDrawlist(ImDrawList *drawList = nullptr);
 IMGUI_API void CreateCanvas(const char *name);
 IMGUI_API void CreateCanvas(const char *name, const ImVec2 &position,
                             const ImVec2 &size);
-/** @note Convenience method */
-IMGUI_API void Manipulate(ImGuizmoMode mode, ImGuizmoOperation operation,
+/**
+ * @note Convenience method
+ * @param [in] snap shared between all operations
+ * @return same as End()
+ */
+IMGUI_API bool Manipulate(ImGuizmoMode mode, ImGuizmoOperation operation,
                           float *model, const float *snap = nullptr);
 
 /**
@@ -100,17 +136,20 @@ IMGUI_API void Manipulate(ImGuizmoMode mode, ImGuizmoOperation operation,
  * @param [in] projection Camera projection matrix (column-major)
  */
 IMGUI_API void SetCamera(const float *view, const float *projection,
-                         bool isOrtho);
+                         bool is_ortho);
 
 /** 
  * @param [in] model Model matrix (column-major)
+ * @return true if gizmo is visible
  */
-IMGUI_API bool Begin(ImGuizmoMode mode, float *model);
+IMGUI_API bool Begin(ImGuizmoMode mode, float *model,
+                     ImGuizmoAxisFlags locked_axes = ImGuizmoAxisFlags_None);
 /**
  * Saves result to locked model matrix if manipulation has been made between
  * Begin/End
+ * @return true if matrix has been updated
  */
-IMGUI_API void End();
+IMGUI_API bool End();
 
 /** @param snap */
 IMGUI_API void Translate(const float *snap = nullptr);
@@ -152,14 +191,14 @@ IMGUI_API void DrawGrid(const float *view, const float *projection,
 /**
  * @param [in] matrix Input matrix (column-major)
  * @param [out] t vec3 Translation
- * @param [out] r vec3 Rotation
+ * @param [out] r vec3 Rotation in degrees
  * @param [out] s vec3 Scale
  */
 IMGUI_API void DecomposeMatrix(const float *matrix, float *t, float *r,
                                float *s);
 /**
  * @param [in] t vec3 Translation
- * @param [in] r vec3 Rotation
+ * @param [in] r vec3 Rotation in degrees
  * @param [in] s vec3 Scale
  * @param [out] matrix Result matrix (column-major)
  */
