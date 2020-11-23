@@ -15,7 +15,6 @@
 
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
-#include "glm/gtx/wrap.hpp"
 
 int main(int argc, char *argv[]) {
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -57,11 +56,7 @@ int main(int argc, char *argv[]) {
   // io.ConfigViewportsNoAutoMerge = true;
   io.ConfigViewportsNoTaskBarIcon = true;
 
-#if 1
   ImGui::StyleColorsDark();
-#else
-  ImGui::StyleColorsClassic();
-#endif
 
   // When viewports are enabled we tweak WindowRounding/WindowBg so platform
   // windows can look identical to regular ones.
@@ -155,27 +150,17 @@ int main(int argc, char *argv[]) {
     ImGui::PushStyleColor(ImGuiCol_Border, 0);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 
-    constexpr ImGuiWindowFlags flags{ ImGuiWindowFlags_NoBackground |
+    constexpr ImGuiWindowFlags window_flags{ ImGuiWindowFlags_NoBackground |
                                       ImGuiWindowFlags_NoDecoration |
-                                      ImGuiWindowFlags_NoSavedSettings |
-                                      ImGuiWindowFlags_NoInputs |
+                                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
                                       ImGuiWindowFlags_NoFocusOnAppearing |
                                       ImGuiWindowFlags_NoBringToFrontOnFocus };
 
-    if (ImGui::Begin("Canvas", nullptr, flags)) {
-      ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
-      // SetViewport(ImGui::GetWindowPos(), ImGui::GetWindowSize());
-      ImGuizmo::DrawGrid(glm::value_ptr(camera_view),
-                         glm::value_ptr(camera_projection),
-                         glm::value_ptr(glm::mat4{ 1.0f }), 100.0f);
-      ImGuizmo::DrawCubes(glm::value_ptr(camera_view),
-                          glm::value_ptr(camera_projection),
-                          glm::value_ptr(model_matrix), 1);
-
+    if (ImGui::Begin("Canvas", nullptr, window_flags)) {
       ImGuizmo::SetCamera(glm::value_ptr(camera_view),
                           glm::value_ptr(camera_projection), !is_perspective);
 
-      static ImGuizmoMode mode{ ImGuizmoMode_Global };
+      static ImGuizmoMode mode{ ImGuizmoMode_World };
       static ImGuizmoOperation operation{ ImGuizmoOperation_Translate };
 
 #if _PROFILE_CODE

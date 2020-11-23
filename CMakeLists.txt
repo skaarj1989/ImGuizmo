@@ -34,7 +34,7 @@ set(glm_DIR "${CMAKE_SOURCE_DIR}/extern/glm/cmake/glm")
 find_package(glm REQUIRED)
 add_subdirectory(extern)
 
-add_library(ImGuizmo )
+add_library(ImGuizmo)
 target_sources(ImGuizmo PRIVATE "ImGuizmo.h" "ImGuizmo.cpp")
 target_compile_definitions(ImGuizmo
 	PRIVATE

@@ -57,12 +57,12 @@ struct ImGuizmoStyle {
 };
 
 enum ImGuizmoMode_ {
-  ImGuizmoMode_Local,
-  ImGuizmoMode_Global,
+  ImGuizmoMode_World, // Transform tools aligned to world grid
+  ImGuizmoMode_Local,  // Transform tools aligned to rotation of model matrix
 
   ImGuizmoMode_COUNT
 };
-using ImGuizmoMode = unsigned int;
+using ImGuizmoMode = int;
 
 enum ImGuizmoOperation_ {
   ImGuizmoOperation_None = 0,
@@ -71,7 +71,7 @@ enum ImGuizmoOperation_ {
   ImGuizmoOperation_Rotate,
   ImGuizmoOperation_Scale,
 };
-using ImGuizmoOperation = unsigned int;
+using ImGuizmoOperation = int;
 
 enum ImGuizmoAxisFlags_ {
   ImGuizmoAxisFlags_None = 0,
@@ -102,27 +102,21 @@ namespace ImGuizmo {
 
 IMGUI_API void PrintContext();
 
-IMGUI_API ImGuizmoStyle &GetStyle(); 
+IMGUI_API ImGuizmoStyle &GetStyle();
 IMGUI_API void StyleColorsClassic(ImGuizmoStyle *dst = nullptr);
 IMGUI_API void StyleColorsBlender(ImGuizmoStyle *dst = nullptr);
 IMGUI_API void StyleColorsUnreal(ImGuizmoStyle *dst = nullptr);
 
 IMGUI_API void ShowStyleEditor(ImGuizmoStyle *ref = nullptr);
 IMGUI_API bool ShowStyleSelector(const char *label);
-IMGUI_API const char *GetStyleColorName(ImGuizmoCol idx);  
+
+IMGUI_API void SetConfigFlags(ImGuizmoConfigFlags flags);
 
 IMGUI_API void SetViewport(const ImVec2 &position, const ImVec2 &size);
 IMGUI_API void SetViewport(float x, float y, float width, float height);
-/** @param drawList */
+/** @param draw_list */
 IMGUI_API void SetDrawlist(ImDrawList *draw_list = nullptr);
 
-/**
- * @note Convenience method
- * @brief Creates transparent window and uses its DrawList and dimensions
- */
-IMGUI_API void CreateCanvas(const char *name);
-IMGUI_API void CreateCanvas(const char *name, const ImVec2 &position,
-                            const ImVec2 &size);
 /**
  * @note Convenience method
  * @param [in] snap shared between all operations
@@ -161,8 +155,7 @@ IMGUI_API void Scale(const float *snap = nullptr);
 /** @param snap */
 IMGUI_API void Cage(const float *bounds, const float *snap);
 
-IMGUI_API void ViewManip(float *view, const float length,
-                         const ImVec2 &position, const ImVec2 &size,
+IMGUI_API void ViewManipulate(float *view, const float length,
                          ImU32 backgroundColor = 0x10101010);
 
 /**
@@ -173,20 +166,11 @@ IMGUI_API void ViewManip(float *view, const float length,
  * 
  * @param [in] view Camera view, column-major matrix
  */
-IMGUI_API void ViewManipulate(float *view, const float length,
-                              const ImVec2 &position, const ImVec2 &size,
-                              ImU32 backgroundColor);
+
 
 //
 //
 //
-
-/** @todo Remove me */
-IMGUI_API void DrawCubes(const float *view, const float *projection,
-                         const float *models, int modelCount);
-/** @todo Remove me */
-IMGUI_API void DrawGrid(const float *view, const float *projection,
-                        const float *model, const float gridSize);
 
 /**
  * @param [in] matrix Input matrix (column-major)

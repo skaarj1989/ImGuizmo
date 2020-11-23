@@ -40,8 +40,8 @@
 constexpr auto kPi = glm::pi<float>();
 constexpr auto kEpsilon = glm::epsilon<float>();
 
-const glm::vec3 kReferenceUp{ 0.0f, 1.0f, 0.0f };
-const glm::vec3 kUnitDirections[3]{
+static const glm::vec3 kReferenceUp{ 0.0f, 1.0f, 0.0f };
+static const glm::vec3 kUnitDirections[3]{
   { 1.0f, 0.0f, 0.0f }, // Right
   { 0.0f, 1.0f, 0.0f }, // Up
   { 0.0f, 0.0f, 1.0f }  // Forward
@@ -51,10 +51,9 @@ const glm::vec3 kUnitDirections[3]{
 constexpr float kQuadSize{ 0.20f };
 constexpr float kQuadMin{ 0.30f };
 constexpr float kQuadMax{ kQuadMin + kQuadSize };
-const float kUnitQuad[]{ kQuadMin, kQuadMin, kQuadMin, kQuadMax,
-                         kQuadMax, kQuadMax, kQuadMax, kQuadMin };
+static const float kUnitQuad[]{ kQuadMin, kQuadMin, kQuadMin, kQuadMax,
+                                kQuadMax, kQuadMax, kQuadMax, kQuadMin };
 
-constexpr float kRotationRingScale{ 0.06f };
 constexpr float kCircleRadius{ 6.0f };  // Translation and scale dots
 constexpr float kLineThickness{ 3.0f }; // Translation and scale axes
 constexpr int kCircleSegmentCount{ 128 };
@@ -70,7 +69,7 @@ enum ImGuizmoAxis_ {
 
   ImGuizmoAxis_COUNT
 };
-using ImGuizmoAxis = unsigned int;
+using ImGuizmoAxis = int;
 
 enum ImGuizmoPlane_ {
   ImGuizmoPlane_YZ,
@@ -79,18 +78,13 @@ enum ImGuizmoPlane_ {
 
   ImGuizmoPlane_COUNT
 };
-using ImGuizmoPlane = unsigned int;
-
-//-----------------------------------------------------------------------------
-// [SECTION] TYPES
-//-----------------------------------------------------------------------------
+using ImGuizmoPlane = int;
 
 struct ImGuizmoRay {
   glm::vec3 Start{ 0.0f };
   glm::vec3 End{ 0.0f };
   glm::vec3 Direction{ 0.0f };
 };
-
 struct ImGuizmoCamera {
   bool IsOrtho{ false };
 
@@ -120,7 +114,7 @@ struct ImGuizmoWidget {
   ImGuizmoAxisFlags ActiveManipulationFlags{ ImGuizmoAxisFlags_None };
   ImGuizmoAxisFlags LockedAxesFlags{ ImGuizmoAxisFlags_None };
 
-  bool Dirty{ false }; // Set to true on manipulate
+  bool Dirty{ false }; // Is set to true on manipulate
 
   // Screen space values
   glm::vec2 Origin{ 0.0f };
@@ -153,7 +147,6 @@ struct ImGuizmoWidget {
   void Load(const float *model);
   float ComputeAngleOnPlane() const;
 };
-
 struct ImGuizmoCage {
   bool InUse{ false };
 
@@ -227,33 +220,33 @@ void StyleColorsClassic(ImGuizmoStyle *dst) {
   ImGuizmoStyle *style{ dst ? dst : &ImGuizmo::GetStyle() };
   ImVec4 *colors{ style->Colors };
 
-  colors[ImGuizmoCol_Inactive] = ImVec4{ 0.60f, 0.60f, 0.60f, 0.60f };
-  colors[ImGuizmoCol_Hovered] = ImVec4{ 1.00f, 0.501f, 0.062f, 0.54f };
+  colors[ImGuizmoCol_Text] = ImVec4{ 1.0f, 1.0f, 1.0f, 1.0f };
+  colors[ImGuizmoCol_TextShadow] = ImVec4{ 0.0f, 0.0f, 0.0f, 1.0f };
 
-  colors[ImGuizmoCol_SpecialMove] = ImVec4{ 1.00f, 1.00f, 1.00f, 1.00f };
-
-  colors[ImGuizmoCol_Text] = ImVec4{ 1.00f, 1.00f, 1.00f, 1.00f };
-  colors[ImGuizmoCol_TextShadow] = ImVec4{ 0.00f, 0.00f, 0.00f, 1.00f };
+  colors[ImGuizmoCol_Inactive] = ImVec4{ 0.6f, 0.6f, 0.6f, 0.6f };
+  colors[ImGuizmoCol_Hovered] = ImVec4{ 1.0f, 0.5f, 0.06f, 0.54f };
   
-  colors[ImGuizmoCol_AxisX] = ImVec4{ 0.66f, 0.00f, 0.00f, 1.00f };
-  colors[ImGuizmoCol_AxisY] = ImVec4{ 0.00f, 0.66f, 0.00f, 1.00f };
-  colors[ImGuizmoCol_AxisZ] = ImVec4{ 0.00f, 0.00f, 0.66f, 1.00f };
-
-  colors[ImGuizmoCol_PlaneYZ] = ImVec4{ 0.66f, 0.00f, 0.00f, 0.38f };
-  colors[ImGuizmoCol_PlaneZX] = ImVec4{ 0.00f, 0.66f, 0.00f, 0.38f };
-  colors[ImGuizmoCol_PlaneXY] = ImVec4{ 0.00f, 0.00f, 0.66f, 0.38f };
+  colors[ImGuizmoCol_SpecialMove] = ImVec4{ 1.0f, 1.0f, 1.0f, 1.0f };
+  
+  colors[ImGuizmoCol_AxisX] = ImVec4{ 0.66f, 0.0f, 0.0f, 1.0f };
+  colors[ImGuizmoCol_AxisY] = ImVec4{ 0.0f, 0.66f, 0.0f, 1.0f };
+  colors[ImGuizmoCol_AxisZ] = ImVec4{ 0.0f, 0.0f, 0.66f, 1.0f };
+  
+  colors[ImGuizmoCol_PlaneYZ] = ImVec4{ 0.66f, 0.0f, 0.0f, 0.38f };
+  colors[ImGuizmoCol_PlaneZX] = ImVec4{ 0.0f, 0.66f, 0.0f, 0.38f };
+  colors[ImGuizmoCol_PlaneXY] = ImVec4{ 0.0f, 0.0f, 0.66f, 0.38f };
 }
 void StyleColorsBlender(ImGuizmoStyle *dst) {
   ImGuizmoStyle *style{ dst ? dst : &ImGuizmo::GetStyle() };
   ImVec4 *colors{ style->Colors };
 
-  colors[ImGuizmoCol_Inactive] = ImVec4{ 0.600f, 0.600f, 0.600f, 0.600f };
-  colors[ImGuizmoCol_Hovered] = ImVec4{ 1.00f, 0.501f, 0.062f, 1.00f };
+  colors[ImGuizmoCol_Text] = ImVec4{ 1.0f, 1.0f, 1.0f, 1.0f };
+  colors[ImGuizmoCol_TextShadow] = ImVec4{ 0.0f, 0.0f, 0.0f, 1.0f };
+  
+  colors[ImGuizmoCol_Inactive] = ImVec4{ 0.6f, 0.6f, 0.6f, 0.6f };
+  colors[ImGuizmoCol_Hovered] = ImVec4{ 1.0f, 0.5f, 0.06f, 1.0f };
 
-  colors[ImGuizmoCol_SpecialMove] = ImVec4{ 1.00f, 1.00f, 1.00f, 1.00f };
-
-  colors[ImGuizmoCol_Text] = ImVec4{ 1.00f, 1.00f, 1.00f, 1.00f };
-  colors[ImGuizmoCol_TextShadow] = ImVec4{ 0.00f, 0.00f, 0.00f, 1.00f };
+  colors[ImGuizmoCol_SpecialMove] = ImVec4{ 1.0f, 1.0f, 1.0f, 1.0f };
 
   colors[ImGuizmoCol_AxisX] = ImVec4{ 1.0f, 0.2f, 0.321f, 1.0f };
   colors[ImGuizmoCol_AxisY] = ImVec4{ 0.545f, 0.862f, 0.0f, 1.0f };
@@ -267,24 +260,47 @@ void StyleColorsUnreal(ImGuizmoStyle *dst) {
   ImGuizmoStyle *style{ dst ? dst : &ImGuizmo::GetStyle() };
   ImVec4 *colors{ style->Colors };
 
-  colors[ImGuizmoCol_Inactive] = ImVec4{ 0.700f, 0.700f, 0.700f, 0.700f };
-  colors[ImGuizmoCol_Hovered] = ImVec4{ 1.00f, 1.00f, 0.0f, 1.00f };
+  colors[ImGuizmoCol_Text] = ImVec4{ 1.0f, 1.0f, 1.0f, 1.0f };
+  colors[ImGuizmoCol_TextShadow] = ImVec4{ 0.0f, 0.0f, 0.0f, 1.0f };
+  
+  colors[ImGuizmoCol_Inactive] = ImVec4{ 0.7f, 0.7f, 0.7f, 0.7f };
+  colors[ImGuizmoCol_Hovered] = ImVec4{ 1.0f, 1.0f, 0.0f, 1.0f };
 
-  colors[ImGuizmoCol_SpecialMove] = ImVec4{ 1.00f, 1.00f, 1.00f, 1.00f };
+  colors[ImGuizmoCol_SpecialMove] = ImVec4{ 1.0f, 1.0f, 1.0f, 1.0f };
 
-  colors[ImGuizmoCol_Text] = ImVec4{ 1.00f, 1.00f, 1.00f, 1.00f };
-  colors[ImGuizmoCol_TextShadow] = ImVec4{ 0.00f, 0.00f, 0.00f, 1.00f };
+  colors[ImGuizmoCol_AxisX] = ImVec4{ 0.594f, 0.0197f, 0.0f, 1.0f };
+  colors[ImGuizmoCol_AxisY] = ImVec4{ 0.1349f, 0.3959f, 0.0f, 1.0f };
+  colors[ImGuizmoCol_AxisZ] = ImVec4{ 0.0251f, 0.207f, 0.85f, 1.0f };
 
-  colors[ImGuizmoCol_AxisX] = ImVec4{ 0.1349f, 0.3959f, 0.0f, 1.0f };
-  colors[ImGuizmoCol_AxisY] = ImVec4{ 0.0251f, 0.207f, 0.85f, 1.0f };
-  colors[ImGuizmoCol_AxisZ] = ImVec4{ 0.594f, 0.0197f, 0.0f, 1.0f };
+  colors[ImGuizmoCol_PlaneYZ] = ImVec4{ 0.594f, 0.0197f, 0.0f, 0.6f };
+  colors[ImGuizmoCol_PlaneZX] = ImVec4{ 0.1349f, 0.3959f, 0.0f, 0.6f };
+  colors[ImGuizmoCol_PlaneXY] = ImVec4{ 0.0251f, 0.207f, 0.85f, 0.6f };
 
-  colors[ImGuizmoCol_PlaneYZ] = ImVec4{ 0.1349f, 0.3959f, 0.0f, 0.6f };
-  colors[ImGuizmoCol_PlaneZX] = ImVec4{ 0.0251f, 0.207f, 0.85f, 0.6f };
-  colors[ImGuizmoCol_PlaneXY] = ImVec4{ 0.594f, 0.0197f, 0.0f, 0.6f };
-
+  constexpr float gamma{ 2.2f };
+  for (int i = 0; i < ImGuizmoCol_COUNT; ++i) {
+    const glm::vec4 src_color{ colors[i] };
+    colors[i] = glm::vec4{ glm::pow(src_color.rgb(), glm::vec3{ 1.0f / gamma }),
+                           src_color.a };
+  }
 }
 
+static const char *GetStyleColorName(ImGuizmoCol idx) {
+  switch (idx) {
+  case ImGuizmoCol_Text: return "Text";
+  case ImGuizmoCol_TextShadow: return "TextShadow";
+  case ImGuizmoCol_Inactive: return "Inactive";
+  case ImGuizmoCol_Hovered: return "Hovered";
+  case ImGuizmoCol_SpecialMove: return "SpecialMove";
+  case ImGuizmoCol_AxisX: return "AxisX";
+  case ImGuizmoCol_AxisY: return "AxisY";
+  case ImGuizmoCol_AxisZ: return "AxisZ";
+  case ImGuizmoCol_PlaneYZ: return "PlaneYZ";
+  case ImGuizmoCol_PlaneZX: return "PlaneZX";
+  case ImGuizmoCol_PlaneXY: return "PlaneXY";
+  }
+  IM_ASSERT(0);
+  return "Unknown";
+}
 void ShowStyleEditor(ImGuizmoStyle *ref) {
   ImGuizmoStyle &style{ ImGuizmo::GetStyle() };
   static ImGuizmoStyle ref_saved_style;
@@ -293,6 +309,8 @@ void ShowStyleEditor(ImGuizmoStyle *ref) {
   if (init && ref == nullptr) ref_saved_style = style;
   init = false;
   if (ref == nullptr) ref = &ref_saved_style;
+
+  // @todo ...
 
   ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.50f);
 
@@ -315,7 +333,6 @@ void ShowStyleEditor(ImGuizmoStyle *ref) {
     ImGui::PopID();
   }
 }
-
 bool ShowStyleSelector(const char *label) {
   static int style_idx = -1;
   if (ImGui::Combo(label, &style_idx, "Classic\0Blender\0Unreal\0")) {
@@ -335,31 +352,13 @@ bool ShowStyleSelector(const char *label) {
   return false;
 }
 
-const char *GetStyleColorName(ImGuizmoCol idx) {
-  switch (idx) {
-  case ImGuizmoCol_Text: return "Text";
-  case ImGuizmoCol_TextShadow: return "TextShadow";
-  case ImGuizmoCol_Inactive: return "Inactive";
-  case ImGuizmoCol_Hovered: return "Hovered";
-  case ImGuizmoCol_SpecialMove: return "SpecialMove";
-  case ImGuizmoCol_AxisX: return "AxisX";
-  case ImGuizmoCol_AxisY: return "AxisY";
-  case ImGuizmoCol_AxisZ: return "AxisZ";
-  case ImGuizmoCol_PlaneYZ: return "PlaneYZ";
-  case ImGuizmoCol_PlaneZX: return "PlaneZX";
-  case ImGuizmoCol_PlaneXY: return "PlaneXY";
-  }
-  IM_ASSERT(0);
-  return "Unknown";
-}
-
-static ImU32 GetColorU32(ImGuiCol idx, float alpha_mul = 1.0f) {
+static ImU32 GetColorU32(ImGuizmoCol idx, float alpha_mul = 1.0f) {
   const ImGuizmoStyle &style{ GImGuizmo.Style };
   ImVec4 c{ style.Colors[idx] };
   c.w *= style.Alpha * alpha_mul;
   return ImGui::ColorConvertFloat4ToU32(c);
 }
-static const ImVec4 &GetStyleColorVec4(ImGuiCol idx) {
+static const ImVec4 &GetStyleColorVec4(ImGuizmoCol idx) {
   const ImGuizmoStyle &style{ GImGuizmo.Style };
   return style.Colors[idx];
 }
@@ -390,8 +389,8 @@ static glm::vec2 WorldToScreen(const glm::vec3 &world_pos,
 
 static ImGuizmoRay RayCast(const glm::mat4 &view_proj_matrix,
                            const glm::vec2 &position, const glm::vec2 &size) {
-  // Convert to NDC
   glm::vec2 mouse_pos{ ImGui::GetIO().MousePos };
+  // Convert to NDC
   mouse_pos = ((mouse_pos - position) / size) * 2.0f - 1.0f;
   mouse_pos.y *= -1.0f;
 
@@ -448,7 +447,6 @@ static float DistanceToPlane(const glm::vec3 &point, const glm::vec4 &plane) {
 static float IntersectRayPlane(const ImGuizmoRay &ray, const glm::vec4 &plane) {
   const float num{ glm::dot(plane.xyz(), ray.Start) - plane.w };
   const float denom{ glm::dot(plane.xyz(), ray.Direction) };
-
   // Normal is orthogonal to vector, can't intersect
   if (glm::abs(denom) < kEpsilon) return -1.0f;
   return -(num / denom);
@@ -511,15 +509,15 @@ static void ComputeSnap(glm::vec3 &value, const float *snap) {
 // [SECTION] UTILITIES
 //-----------------------------------------------------------------------------
 
-bool IsAxisIdxValid(ImGuizmoAxis axis_idx) {
+static bool IsAxisIdxValid(ImGuizmoAxis axis_idx) {
   return axis_idx >= 0 && axis_idx < 3;
 }
-bool HasSingleAxis(ImGuizmoAxisFlags flags) {
+static bool HasSingleAxis(ImGuizmoAxisFlags flags) {
   return flags == ImGuizmoAxisFlags_X || flags == ImGuizmoAxisFlags_Y ||
          flags == ImGuizmoAxisFlags_Z;
 }
 
-ImGuizmoAxis GetAxisIdx(ImGuizmoAxisFlags flags, bool around) {
+static ImGuizmoAxis GetAxisIdx(ImGuizmoAxisFlags flags, bool around) {
   IM_ASSERT(HasSingleAxis(flags));
   switch (flags) {
   case ImGuizmoAxisFlags_X:
@@ -533,7 +531,7 @@ ImGuizmoAxis GetAxisIdx(ImGuizmoAxisFlags flags, bool around) {
     return -1;
   }
 }
-ImGuizmoAxisFlags AxisToFlag(ImGuizmoAxis axis_idx, bool around) {
+static ImGuizmoAxisFlags AxisToFlag(ImGuizmoAxis axis_idx, bool around) {
   IM_ASSERT(IsAxisIdxValid(axis_idx));
   switch (axis_idx) {
   case ImGuizmoAxis_X:
@@ -548,7 +546,7 @@ ImGuizmoAxisFlags AxisToFlag(ImGuizmoAxis axis_idx, bool around) {
   }
 }
 
-ImGuizmoAxis GetAxisAroundIdx(ImGuizmoAxis axis_idx) {
+static ImGuizmoAxis GetAxisAroundIdx(ImGuizmoAxis axis_idx) {
   IM_ASSERT(IsAxisIdxValid(axis_idx));
   switch (axis_idx) {
   case ImGuizmoAxis_X:
@@ -562,7 +560,7 @@ ImGuizmoAxis GetAxisAroundIdx(ImGuizmoAxis axis_idx) {
     return -1;
   }
 }
-ImGuizmoAxis GetScaleAxisIdx(ImGuizmoAxis axis_idx) {
+static ImGuizmoAxis GetScaleAxisIdx(ImGuizmoAxis axis_idx) {
   IM_ASSERT(IsAxisIdxValid(axis_idx));
   switch (axis_idx) {
   case ImGuizmoAxis_X:
@@ -577,15 +575,15 @@ ImGuizmoAxis GetScaleAxisIdx(ImGuizmoAxis axis_idx) {
   }
 }
 
-bool IsPlaneIdxValid(ImGuizmoPlane planeIdx) {
+static bool IsPlaneIdxValid(ImGuizmoPlane planeIdx) {
   return planeIdx >= 0 && planeIdx < 3;
 }
-bool HasPlane(ImGuizmoAxisFlags flags) {
+static bool HasPlane(ImGuizmoAxisFlags flags) {
   if (flags == ImGuizmoAxisFlags_ALL) return false;
   return flags == ImGuizmoAxisFlags_YZ || flags == ImGuizmoAxisFlags_ZX ||
          flags == ImGuizmoAxisFlags_XY;
 }
-ImGuizmoPlane GetPlaneIdx(ImGuizmoAxisFlags flags) {
+static ImGuizmoPlane GetPlaneIdx(ImGuizmoAxisFlags flags) {
   IM_ASSERT(HasPlane(flags));
   switch (flags) {
   case ImGuizmoAxisFlags_YZ:
@@ -599,7 +597,7 @@ ImGuizmoPlane GetPlaneIdx(ImGuizmoAxisFlags flags) {
     return -1;
   }
 }
-ImGuizmoAxisFlags PlaneToFlags(ImGuizmoPlane plane_idx) {
+static ImGuizmoAxisFlags PlaneToFlags(ImGuizmoPlane plane_idx) {
   IM_ASSERT(IsPlaneIdxValid(plane_idx));
   switch (plane_idx) {
   case ImGuizmoPlane_YZ:
@@ -615,136 +613,18 @@ ImGuizmoAxisFlags PlaneToFlags(ImGuizmoPlane plane_idx) {
 }
 
 //-----------------------------------------------------------------------------
-// [SECTION] UTILITIES (TEXT)
-//-----------------------------------------------------------------------------
-
-static void RenderText(const glm::vec2 &position, const char *text) {
-  const ImGuizmoContext &g{ GImGuizmo };
-  g.DrawList->AddText(position + 15.0f, GetColorU32(ImGuizmoCol_TextShadow),
-                      text);
-  g.DrawList->AddText(position + 14.0f, GetColorU32(ImGuizmoCol_Text), text);
-}
-
-const char *kInfoMasks[]{
-  // -- Translation:
-  "X : %5.3f",                     // 0
-  "Y : %5.3f",                     // 1
-  "Z : %5.3f",                     // 2
-  "Y : %5.3f Z : %5.3f",           // 3
-  "X : %5.3f Z : %5.3f",           // 6
-  "X : %5.3f Y : %5.3f",           // 9
-  "X : %5.3f Y : %5.3f Z : %5.3f", // 0
-
-  // -- Rotation:
-  "X : %5.2f deg %5.2f rad",      // 0
-  "Y : %5.2f deg %5.2f rad",      // 1
-  "Z : %5.2f deg %5.2f rad",      // 2
-  "Screen : %5.2f deg %5.2f rad", // 0
-
-  // -- Scale
-  "XYZ : %5.2f" // 0
-};
-const int kInfoDataIndices[]{
-  0, 1, 2, // XYZ
-  1, 2, 0, // YZ (0-unused)
-  0, 2, 0, // XZ (0-unused)
-  0, 1, 0, // XY (0-unused)
-};
-
-void RenderTranslationInfo() {
-  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
-
-  const ImGuizmoAxisFlags &flags{ gizmo->ActiveManipulationFlags };
-  const char *mask{ nullptr };
-  int start_idx{ 0 };
-  if (HasSingleAxis(flags)) {
-    const ImGuizmoAxis axis_idx{ GetAxisIdx(flags, false) };
-    mask = kInfoMasks[axis_idx];
-    start_idx = axis_idx;
-  } else if (HasPlane(flags)) {
-    const ImGuizmoPlane planeIdx{ GetPlaneIdx(flags) };
-    mask = kInfoMasks[ImGuizmoAxis_COUNT + planeIdx];
-    start_idx = ImGuizmoAxis_COUNT + (ImGuizmoPlane_COUNT * planeIdx);
-  } else {
-    mask = kInfoMasks[ImGuizmoAxis_COUNT + ImGuizmoPlane_COUNT];
-  }
-
-  const glm::vec3 delta_info{ gizmo->ModelMatrix[3].xyz() -
-                              gizmo->DragTranslationOrigin };
-
-  char info_buffer[128]{};
-  ImFormatString(info_buffer, sizeof(info_buffer), mask,
-                 delta_info[kInfoDataIndices[start_idx]],
-                 delta_info[kInfoDataIndices[start_idx + 1]],
-                 delta_info[kInfoDataIndices[start_idx + 2]]);
-  RenderText(gizmo->Origin, info_buffer);
-}
-void RenderRotationInfo() {
-  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
-
-  const ImGuizmoAxisFlags flags{ gizmo->ActiveManipulationFlags };
-  const char *mask{ nullptr };
-  if (HasSingleAxis(flags)) {
-    const ImGuizmoAxis axis_idx{ (GetAxisIdx(flags, false)) };
-    mask = kInfoMasks[ImGuizmoAxis_COUNT + ImGuizmoPlane_COUNT + 1 + axis_idx];
-  } else {
-    mask = kInfoMasks[(ImGuizmoAxis_COUNT * 2) + ImGuizmoPlane_COUNT];
-  }
-
-  char info_buffer[128]{};
-  ImFormatString(info_buffer, sizeof(info_buffer), mask,
-                 glm::degrees(gizmo->RotationAngle), gizmo->RotationAngle);
-  RenderText(gizmo->Origin, info_buffer);
-}
-void RenderScaleInfo() {
-  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
-
-  const ImGuizmoAxisFlags flags{ gizmo->ActiveManipulationFlags };
-  const char *mask{ nullptr };
-  int start_idx{ 0 };
-  if (HasSingleAxis(flags)) {
-    const ImGuizmoAxis axis_idx{ GetAxisIdx(flags, false) };
-    mask = kInfoMasks[axis_idx];
-    start_idx = axis_idx;
-  } else {
-    if (glm::all(glm::equal(gizmo->Scale, glm::vec3{ gizmo->Scale.x })))
-      mask = kInfoMasks[11];
-    else
-      mask = kInfoMasks[6];
-  }
-
-  char info_buffer[128]{};
-  ImFormatString(info_buffer, sizeof(info_buffer), mask,
-                 gizmo->Scale[kInfoDataIndices[start_idx]],
-                 gizmo->Scale[kInfoDataIndices[start_idx + 1]],
-                 gizmo->Scale[kInfoDataIndices[start_idx + 2]]);
-  RenderText(gizmo->Origin, info_buffer);
-}
-
-void InspectHoverFlags(const char *label, ImGuizmoAxisFlags flags) {
-  ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-  ImGui::Text(label);
-  ImGui::SameLine();
-  ImGui::CheckboxFlags("X", &flags, ImGuizmoAxisFlags_X);
-  ImGui::SameLine();
-  ImGui::CheckboxFlags("Y", &flags, ImGuizmoAxisFlags_Y);
-  ImGui::SameLine();
-  ImGui::CheckboxFlags("Z", &flags, ImGuizmoAxisFlags_Z);
-  ImGui::PopItemFlag();
-}
-
-//-----------------------------------------------------------------------------
 // [SECTION]
 //-----------------------------------------------------------------------------
 
-constexpr auto kDarkGrayColor = 0xFF404040;
-constexpr auto kMediumGrayColor = 0xFF808080;
+static ImRect CalcViewport() {
+  const glm::vec2 region_min{ ImGui::GetWindowContentRegionMin() };
+  const glm::vec2 region_max{ ImGui::GetWindowContentRegionMax() };
+  const glm::vec2 position{ ImGui::GetWindowPos() + region_min };
+  const glm::vec2 size{ region_max - region_min };
+  return ImRect{ position, position + size };
+}
 
-//-----------------------------------------------------------------------------
-// [SECTION]
-//-----------------------------------------------------------------------------
-
-bool GizmoBehavior(ImGuizmoOperation operation, ImGuizmoAxisFlags &hovered,
+static bool GizmoBehavior(ImGuizmoOperation operation, ImGuizmoAxisFlags &hovered,
                    bool *out_held) {
   IM_ASSERT(operation);
 
@@ -785,11 +665,14 @@ bool GizmoBehavior(ImGuizmoOperation operation, ImGuizmoAxisFlags &hovered,
   return pressed;
 }
 
-void SetViewport(const ImRect &viewport) { GImGuizmo.Viewport = viewport; }
-
 //-----------------------------------------------------------------------------
 // [SECTION] HOVER QUERY
 //-----------------------------------------------------------------------------
+
+bool CanActivate() {
+  return ImGui::IsWindowHovered() &&
+         GImGuizmo.Viewport.Contains(ImGui::GetIO().MousePos);
+}
 
 bool IsCoreHovered() {
   const ImGuiIO &io{ ImGui::GetIO() };
@@ -899,181 +782,134 @@ bool IsRotationRingHovered() {
 }
 
 //-----------------------------------------------------------------------------
-// [SECTION] TRANSLATION
+// [SECTION] 
 //-----------------------------------------------------------------------------
 
-ImGuizmoAxisFlags FindTranslationHover() {
-  ImGuizmoAxisFlags hover_flags{ ImGuizmoAxisFlags_None };
-  if (IsCoreHovered()) hover_flags |= ImGuizmoAxisFlags_ALL;
-  if (hover_flags != ImGuizmoAxisFlags_ALL) {
-    for (int plane = 0; plane < 3; ++plane)
-      if (IsPlaneHovered(plane)) {
-        hover_flags |= PlaneToFlags(plane);
-        break;
-      }
-    if (!HasPlane(hover_flags)) {
-      for (int axis = 0; axis < 3; ++axis)
-        if (IsAxisHovered(axis)) {
-          hover_flags |= AxisToFlag(axis, false);
-          break;
-        }
-    }
-  }
-  return hover_flags;
-}
-
-glm::vec4 BuildTranslatePlane() {
-  const ImGuizmoContext &g{ GImGuizmo };
+static bool IsAxisVisible(ImGuizmoAxis axis_idx) {
   const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
-
-  const ImGuizmoAxisFlags flags{ gizmo->ActiveManipulationFlags };
-
-  glm::vec3 move_plane_normal;
-  if (HasPlane(flags)) {
-    move_plane_normal = gizmo->ModelMatrix[GetPlaneIdx(flags)];
-  } else if (HasSingleAxis(flags)) {
-    const glm::vec3 dir{ gizmo->ModelMatrix[GetAxisIdx(flags, false)] };
-    const glm::vec3 camera_to_model_normalized{ glm::normalize(
-      gizmo->ModelMatrix[3].xyz() - g.Camera.Eye) };
-    const glm::vec3 orthoDir{ glm::cross(dir, camera_to_model_normalized) };
-    move_plane_normal = glm::normalize(glm::cross(dir, orthoDir));
-  } else { // special movement
-    move_plane_normal = -g.Camera.Forward;
-  }
-  return BuildPlane(gizmo->ModelMatrix[3], move_plane_normal);
-}
-void BeginTranslation() {
-  const ImGuiIO &io{ ImGui::GetIO() };
-  ImGuizmoContext &g{ GImGuizmo };
-  ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
-
-  g.BackupModelMatrix = gizmo->SourceModelMatrix;
-  g.DragOrigin = io.MousePos;
-
-  gizmo->DragTranslationOrigin = gizmo->ModelMatrix[3];
-  gizmo->TranslationPlane = BuildTranslatePlane();
-  const auto length{ IntersectRayPlane(g.Ray, gizmo->TranslationPlane) };
-  gizmo->TranslationPlaneOrigin = g.Ray.Start + g.Ray.Direction * length;
-  gizmo->ModelRelativeOrigin =
-    (gizmo->TranslationPlaneOrigin - gizmo->ModelMatrix[3].xyz()) *
-    (1.0f / gizmo->ScreenFactor);
-}
-void ContinueTranslation(const float *snap) {
-  const ImGuizmoContext &g{ GImGuizmo };
-  ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
-
-  const ImGuizmoAxisFlags flags{ gizmo->ActiveManipulationFlags };
-
-  const float length{ glm::abs(
-    IntersectRayPlane(g.Ray, gizmo->TranslationPlane)) };
-  const glm::vec3 target_position{ g.Ray.Start + g.Ray.Direction * length };
-  const glm::vec3 new_position{ target_position - gizmo->ModelRelativeOrigin *
-                                                    gizmo->ScreenFactor };
-
-  glm::vec3 delta{ new_position - gizmo->ModelMatrix[3].xyz };
-  if (HasSingleAxis(flags)) {
-    const ImGuizmoAxis axis_idx{ GetAxisIdx(flags, false) };
-    const glm::vec3 axis_value{ gizmo->ModelMatrix[axis_idx] };
-    ImGui::Text("Axis value = %.2f, %.2f, %.2f", axis_value.x, axis_value.y,
-                axis_value.z);
-
-    const float length_on_axis{ glm::dot(axis_value, delta) };
-    delta = axis_value * length_on_axis;
-  }
-
-  if (snap) {
-    glm::vec3 cumulative_delta{ gizmo->ModelMatrix[3].xyz + delta -
-                                gizmo->DragTranslationOrigin };
-    bool apply_rotation_localy{ gizmo->Mode == ImGuizmoMode_Local ||
-                                flags == ImGuizmoAxisFlags_ALL };
-    if (apply_rotation_localy) {
-      glm::mat4 source_model_normalized{ gizmo->SourceModelMatrix };
-      for (int axis = 0; axis < 3; ++axis)
-        source_model_normalized[axis] =
-          glm::normalize(source_model_normalized[axis]);
-      cumulative_delta = glm::inverse(source_model_normalized) *
-                         glm::vec4{ cumulative_delta, 0.0f };
-      ComputeSnap(cumulative_delta, snap);
-      cumulative_delta =
-        source_model_normalized * glm::vec4{ cumulative_delta, 0.0f };
-    } else {
-      ComputeSnap(cumulative_delta, snap);
-    }
-    delta = gizmo->DragTranslationOrigin + cumulative_delta -
-            gizmo->ModelMatrix[3].xyz;
-  }
-
-  if (delta != gizmo->LastTranslationDelta) {
-    gizmo->ModelMatrix = glm::translate(delta) * gizmo->SourceModelMatrix;
-    // Handle locked axes
-    for (int axis = 0; axis < 3; ++axis)
-      if (gizmo->LockedAxesFlags & AxisToFlag(axis, false))
-        gizmo->ModelMatrix[3][axis] = gizmo->DragTranslationOrigin[axis];
-    gizmo->Dirty = true;
-  }
-  gizmo->LastTranslationDelta = delta;
-}
-
-void RenderAxis(ImGuizmoAxis axis_idx, ImGuizmoAxisFlags flags) {
-  const ImGuizmoContext &g{ GImGuizmo };
-  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
-
-  ImU32 color{ GetColorU32(ImGuizmoCol_AxisX + axis_idx) };
-  if (gizmo->LockedAxesFlags & AxisToFlag(axis_idx, false)) {
-    if (g.ConfigFlags & ImGuizmoConfigFlags_HideLocked) return;
-    color = GetColorU32(ImGuizmoCol_Inactive);
-  } else if (HasSingleAxis(flags) && GetAxisIdx(flags, false) == axis_idx) {
-    color = GetColorU32(ImGuizmoCol_Hovered, 0.541f);
-  }
-
-  const glm::vec3 &dir_axis{ kUnitDirections[axis_idx] };
 
   constexpr float visibility_threshold{ 0.03f };
   const float axis_length{ GetSegmentLengthClipSpace(
-    glm::vec3{ 0.0f }, dir_axis * gizmo->ScreenFactor) };
-  if (axis_length < visibility_threshold) return;
+    glm::vec3{ 0.0f }, kUnitDirections[axis_idx] * gizmo->ScreenFactor) };
+  return axis_length >= visibility_threshold;
+}
+static bool IsPlaneVisible(ImGuizmoPlane plane_idx) {
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
 
-  const glm::vec2 tail{ WorldToScreen(dir_axis * 0.1f * gizmo->ScreenFactor,
-                                      gizmo->ModelViewProjMatrix) };
-  const glm::vec2 head{ WorldToScreen(dir_axis * gizmo->ScreenFactor,
-                                      gizmo->ModelViewProjMatrix) };
+  const glm::vec3 plane_dir1{ kUnitDirections[(plane_idx + 1) % 3] *
+                              gizmo->ScreenFactor };
+  const glm::vec3 plane_dir2{ kUnitDirections[(plane_idx + 2) % 3] *
+                              gizmo->ScreenFactor };
 
-  g.DrawList->AddLine(tail, head, color, kLineThickness);
-#if 1
+  const float surface =
+    GetParallelogram(glm::vec4{ 0.0f }, glm::vec4{ plane_dir1, 0.0f },
+                     glm::vec4{ plane_dir2, 0.0f });
+  return surface > 0.0025f;
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] RENDERING
+//-----------------------------------------------------------------------------
+
+// COLOR:
+
+static ImU32 GetSpecialMoveColor(ImGuizmoAxisFlags hover_flags) {
+  const ImGuizmoContext &g{ GImGuizmo };
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  ImU32 color{ GetColorU32(ImGuizmoCol_SpecialMove) };
+  if (gizmo->LockedAxesFlags == ImGuizmoAxisFlags_ALL)
+    color = GetColorU32(ImGuizmoCol_Inactive);
+  else if (hover_flags == ImGuizmoAxisFlags_ALL)
+    color = GetColorU32(ImGuizmoCol_Hovered, 0.541f);
+
+  return color;
+}
+static ImU32 GetAxisColor(ImGuizmoAxis axis_idx, ImGuizmoAxisFlags hover_flags,
+                          bool around) {
+  const ImGuizmoContext &g{ GImGuizmo };
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  ImU32 color{ GetColorU32(ImGuizmoCol_AxisX +
+                           (around ? GetAxisAroundIdx(axis_idx) : axis_idx)) };
+  if (gizmo->LockedAxesFlags & AxisToFlag(axis_idx, around)) {
+    color = GetColorU32(ImGuizmoCol_Inactive);
+  } else if (HasSingleAxis(hover_flags) &&
+             GetAxisIdx(hover_flags, around) == axis_idx) {
+    color = GetColorU32(ImGuizmoCol_Hovered, 0.541f);
+  }
+  return color;
+}
+static ImU32 GetPlaneColor(ImGuizmoPlane plane_idx,
+                           ImGuizmoAxisFlags hover_flags) {
+  const ImGuizmoContext &g{ GImGuizmo };
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  ImU32 color{ GetColorU32(ImGuizmoCol_PlaneYZ + plane_idx) };
+  if (gizmo->LockedAxesFlags & PlaneToFlags(plane_idx))
+    color = GetColorU32(ImGuizmoCol_Inactive);
+  else if (HasPlane(hover_flags) && GetPlaneIdx(hover_flags) == plane_idx)
+    color = GetColorU32(ImGuizmoCol_Hovered, 0.541f);
+
+  return color;
+}
+
+// TRANSLATION:
+
+static void RenderCore(ImGuizmoAxisFlags hover_flags) {
+  const ImGuizmoContext &g{ GImGuizmo };
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  if (g.ConfigFlags & ImGuizmoConfigFlags_HideLocked &&
+      gizmo->LockedAxesFlags == ImGuizmoAxisFlags_ALL)
+    return;
+
+  ImU32 color{ GetSpecialMoveColor(hover_flags) };
+  g.DrawList->AddCircleFilled(gizmo->Origin, kCircleRadius, color,
+                              kCircleSegmentCount);
+}
+
+static void RenderArrowhead(const glm::vec2 &head, ImU32 color) {
+  const ImGuizmoContext &g{ GImGuizmo };
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
   constexpr float arrowhead_size{ kLineThickness * 2.0f };
   const glm::vec2 dir{ glm::normalize(gizmo->Origin - head) * arrowhead_size };
   const glm::vec2 orthogonal_dir{ dir.y, -dir.x };
   const glm::vec2 a{ head + dir };
   g.DrawList->AddTriangleFilled(head - dir, a + orthogonal_dir,
                                 a - orthogonal_dir, color);
-#elif 0
-  g.DrawList->AddCircleFilled(head, kCircleRadius, color);
-#else
-  const glm::vec2 headScaled{ WorldToScreen(
-    (dir_axis * gizmo->Scale[axis_idx]) * gizmo->ScreenFactor,
-    gizmo->ModelViewProjMatrix) };
-
-  constexpr float kQuadSize{ kLineThickness * 2.0f };
-  const glm::vec2 dir{ glm::normalize(gizmo->Origin - headScaled) * kQuadSize };
-  const glm::vec2 a{ headScaled + dir }, b{ headScaled - dir };
-  const ImVec2 points[4]{ a + glm::vec2{ dir.y, -dir.x },
-                          a - glm::vec2{ dir.y, -dir.x },
-                          b + glm::vec2{ -dir.y, dir.x },
-                          b - glm::vec2{ -dir.y, dir.x } };
-  g.DrawList->AddConvexPolyFilled(points, 4, color);
-#endif
 }
-void RenderPlane(ImGuizmoPlane plane_idx, ImGuizmoAxisFlags hover_flags) {
+static void RenderTranslateAxis(ImGuizmoAxis axis_idx,
+                                ImGuizmoAxisFlags hover_flags) {
   const ImGuizmoContext &g{ GImGuizmo };
   const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
 
-  ImU32 color{ GetColorU32(ImGuizmoCol_PlaneYZ + plane_idx) };
-  if (gizmo->LockedAxesFlags & PlaneToFlags(plane_idx)) {
-    if (g.ConfigFlags & ImGuizmoConfigFlags_HideLocked) return;
-    color = GetColorU32(ImGuizmoCol_Inactive);
-  } else if (HasPlane(hover_flags) && GetPlaneIdx(hover_flags) == plane_idx) {
-    color = GetColorU32(ImGuizmoCol_Hovered, 0.541f);
-  }
+  if (!IsAxisVisible(axis_idx)) return;
+  if (g.ConfigFlags & ImGuizmoConfigFlags_HideLocked &&
+      gizmo->LockedAxesFlags & AxisToFlag(axis_idx, false))
+    return;
+
+  const glm::vec3 &dir_axis{ kUnitDirections[axis_idx] };
+  const glm::vec2 tail{ WorldToScreen(dir_axis * 0.1f * gizmo->ScreenFactor,
+                                      gizmo->ModelViewProjMatrix) };
+  const glm::vec2 head{ WorldToScreen(dir_axis * gizmo->ScreenFactor,
+                                      gizmo->ModelViewProjMatrix) };
+
+  ImU32 color{ GetAxisColor(axis_idx, hover_flags, false) };
+  g.DrawList->AddLine(tail, head, color, kLineThickness);
+  RenderArrowhead(head, color);
+}
+static void RenderPlane(ImGuizmoPlane plane_idx,
+                        ImGuizmoAxisFlags hover_flags) {
+  const ImGuizmoContext &g{ GImGuizmo };
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  if (!IsPlaneVisible(plane_idx)) return;
+
+  if (g.ConfigFlags & ImGuizmoConfigFlags_HideLocked &&
+      gizmo->LockedAxesFlags & PlaneToFlags(plane_idx))
+    return;
 
   ImVec2 plane_points[4];
   for (int i = 0; i < 4; ++i) {
@@ -1086,26 +922,13 @@ void RenderPlane(ImGuizmoPlane plane_idx, ImGuizmoAxisFlags hover_flags) {
       WorldToScreen(corner_world_space, gizmo->ModelViewProjMatrix);
   }
 
+  ImU32 color{ GetPlaneColor(plane_idx, hover_flags) };
   g.DrawList->AddConvexPolyFilled(plane_points, 4, color);
   constexpr float plane_border{ 1.5f };
   g.DrawList->AddPolyline(plane_points, 4, color | 0x60000000, true,
                           plane_border);
 }
-void RenderCore(ImGuizmoAxisFlags hover_flags) {
-  const ImGuizmoContext &g{ GImGuizmo };
-  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
-
-  ImU32 color{ GetColorU32(ImGuizmoCol_SpecialMove) };
-  if (gizmo->LockedAxesFlags == ImGuizmoAxisFlags_ALL) {
-    if (g.ConfigFlags & ImGuizmoConfigFlags_HideLocked) return;
-    color = GetColorU32(ImGuizmoCol_Inactive); 
-  } else if (hover_flags == ImGuizmoAxisFlags_ALL)
-    color = GetColorU32(ImGuizmoCol_Hovered, 0.541f);
-
-  g.DrawList->AddCircleFilled(gizmo->Origin, kCircleRadius, color,
-                              kCircleSegmentCount);
-}
-void RenderTranslationTrail() {
+static void RenderTranslationTrail() {
   const ImGuizmoContext &g{ GImGuizmo };
   const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
 
@@ -1122,99 +945,16 @@ void RenderTranslationTrail() {
   g.DrawList->AddLine(tail + diff, head - diff, trail_line_color, 2.0f);
 }
 
-//-----------------------------------------------------------------------------
-// [SECTION] ROTATION
-//-----------------------------------------------------------------------------
+// ROTATION:
 
-ImGuizmoAxisFlags FindRotationHover() {
-  ImGuizmoAxisFlags hover_flags{ ImGuizmoAxisFlags_None };
-  if (IsRotationRingHovered()) hover_flags |= ImGuizmoAxisFlags_ALL;
-  if (hover_flags != ImGuizmoAxisFlags_ALL) {
-    for (int axis = 0; axis < 3; ++axis) {
-      if (IsRotationAxisHovered(axis)) {
-        hover_flags |= AxisToFlag(axis, false);
-        break;
-      }
-    }
-  }
-  // InspectHoverFlags("FindRotationHover()", hover_flags);
-  return hover_flags;
-}
-
-glm::vec4 BuildRotationPlane() {
-  const ImGuizmoContext &g{ GImGuizmo };
-  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
-
-  const ImGuizmoAxisFlags flags{ gizmo->ActiveManipulationFlags };
-
-  glm::vec3 point, plane_normal;
-  if (HasSingleAxis(flags)) {
-    point = gizmo->Mode == ImGuizmoMode_Local ? gizmo->ModelMatrix[3]
-                                              : gizmo->SourceModelMatrix[3];
-    plane_normal = gizmo->ModelMatrix[GetAxisIdx(flags, false)];
-  } else {
-    point = gizmo->SourceModelMatrix[3];
-    plane_normal = -g.Camera.Forward;
-  }
-  return BuildPlane(point, plane_normal);
-}
-void BeginRotation() {
-  const ImGuiIO &io{ ImGui::GetIO() };
-  ImGuizmoContext &g{ GImGuizmo };
-  ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
-
-  g.DragOrigin = io.MousePos;
-  g.BackupModelMatrix = gizmo->SourceModelMatrix;
-
-  gizmo->TranslationPlane = BuildRotationPlane();
-  const float length{ IntersectRayPlane(g.Ray, gizmo->TranslationPlane) };
-  gizmo->RotationVectorSource = glm::normalize(
-    g.Ray.Start + g.Ray.Direction * length - gizmo->ModelMatrix[3].xyz);
-  gizmo->RotationAngleOrigin = gizmo->ComputeAngleOnPlane();
-}
-void ContinueRotation(const float *snap) {
-  ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
-
-  gizmo->RotationAngle = gizmo->ComputeAngleOnPlane();
-  if (snap) ComputeSnap(gizmo->RotationAngle, glm::radians(snap[0]));
-
-  const glm::vec3 rotation_axis_local_space{ glm::normalize(
-    glm::mat3{ gizmo->InversedModelMatrix } *
-    glm::vec3{ gizmo->TranslationPlane }) };
-
-  float angle = gizmo->RotationAngle - gizmo->RotationAngleOrigin;
-  glm::mat4 delta_rotation{ glm::rotate(angle, rotation_axis_local_space) };
-
-  if (gizmo->RotationAngle != gizmo->RotationAngleOrigin) {
-    // @todo Handle locked axes ...
-
-    if (gizmo->Mode == ImGuizmoMode_Local) {
-      const glm::mat4 scale_origin{ glm::scale(gizmo->ModelScaleOrigin) };
-      gizmo->ModelMatrix *= delta_rotation * scale_origin;
-    } else {
-      glm::mat4 result{ gizmo->SourceModelMatrix };
-      result[3] = glm::vec4{ glm::vec3{ 0.0f }, 1.0f };
-      gizmo->ModelMatrix = delta_rotation * result;
-      gizmo->ModelMatrix[3] = gizmo->SourceModelMatrix[3];
-    }
-    gizmo->Dirty = true;
-  }
-  gizmo->RotationAngleOrigin = gizmo->RotationAngle;
-}
-
-void RenderRotationAxis(ImGuizmoAxis axis_idx, bool circle,
-                        ImGuizmoAxisFlags hover_flags) {
+static void RenderRotationAxis(ImGuizmoAxis axis_idx, bool circle,
+                               ImGuizmoAxisFlags hover_flags) {
   const ImGuizmoContext &g{ GImGuizmo };
   ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
 
-  ImU32 color{ GetColorU32(ImGuizmoCol_AxisX + GetAxisAroundIdx(axis_idx)) };
-  if (gizmo->LockedAxesFlags & AxisToFlag(axis_idx, true)) {
-    if (g.ConfigFlags & ImGuizmoConfigFlags_HideLocked) return;
-    color = GetColorU32(ImGuizmoCol_Inactive);
-  } else if (HasSingleAxis(hover_flags) &&
-             GetAxisIdx(hover_flags, true) == axis_idx) {
-    color = GetColorU32(ImGuizmoCol_Hovered, 0.541f);
-  }
+  if (g.ConfigFlags & ImGuizmoConfigFlags_HideLocked &&
+      gizmo->LockedAxesFlags & AxisToFlag(axis_idx, true))
+    return;
 
   glm::vec3 camera_to_model_normalized =
     g.Camera.IsOrtho
@@ -1240,26 +980,24 @@ void RenderRotationAxis(ImGuizmoAxis axis_idx, bool circle,
       gizmo->ScreenFactor;
     circle_pos[i] = WorldToScreen(pos, gizmo->ModelViewProjMatrix);
   }
+
+  ImU32 color{ GetAxisColor(axis_idx, hover_flags, true) };
   g.DrawList->AddPolyline(reinterpret_cast<ImVec2 *>(circle_pos),
                           kCircleSegmentCount, color, circle, 2.5f);
 }
-void RenderRotationRing(ImGuizmoAxisFlags hover_flags) {
+static void RenderRotationRing(ImGuizmoAxisFlags hover_flags) {
   const ImGuizmoContext &g{ GImGuizmo };
   const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
 
-  ImU32 color{ GetColorU32(ImGuizmoCol_SpecialMove) };
-  if (gizmo->LockedAxesFlags == ImGuizmoAxisFlags_ALL) {
-    if (g.ConfigFlags & ImGuizmoConfigFlags_HideLocked) return;
-    color = GetColorU32(ImGuizmoCol_Inactive);
-  } else if (hover_flags == ImGuizmoAxisFlags_ALL) {
-    color = GetColorU32(ImGuizmoCol_Hovered, 0.541f);
-  }
+  if (g.ConfigFlags & ImGuizmoConfigFlags_HideLocked &&
+      gizmo->LockedAxesFlags == ImGuizmoAxisFlags_ALL)
+    return;
 
+  ImU32 color{ GetSpecialMoveColor(hover_flags) };
   g.DrawList->AddCircle(gizmo->Origin, gizmo->RingRadius, color,
                         kCircleSegmentCount, g.Style.RotationRingThickness);
 }
-
-void RenderRotationTrail() {
+static void RenderRotationTrail() {
   const ImGuizmoContext &g{ GImGuizmo };
   const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
 
@@ -1297,11 +1035,363 @@ void RenderRotationTrail() {
                           true, 2.0f);
 }
 
+// SCALE:
+
+static void RenderScaleAxis(ImGuizmoAxis axis_idx,
+                            ImGuizmoAxisFlags hover_flags) {
+  const ImGuizmoContext &g{ GImGuizmo };
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  if (!IsAxisVisible(axis_idx)) return;
+  if (g.ConfigFlags & ImGuizmoConfigFlags_HideLocked &&
+      gizmo->LockedAxesFlags & AxisToFlag(axis_idx, false))
+    return;
+
+  const glm::vec3 &dir_axis{ kUnitDirections[axis_idx] };
+  const glm::vec2 tail{ WorldToScreen(dir_axis * 0.1f * gizmo->ScreenFactor,
+                                      gizmo->ModelViewProjMatrix) };
+  const glm::vec2 head{ WorldToScreen(dir_axis * gizmo->ScreenFactor,
+                                      gizmo->ModelViewProjMatrix) };
+
+  ImU32 color{ GetAxisColor(axis_idx, hover_flags, false) };
+  g.DrawList->AddLine(tail, head, color, kLineThickness);
+#if 1
+  g.DrawList->AddCircleFilled(head, kCircleRadius, color);
+#else
+  const glm::vec2 head_scaled{ WorldToScreen(
+    (dir_axis * gizmo->Scale[axis_idx]) * gizmo->ScreenFactor,
+    gizmo->ModelViewProjMatrix) };
+
+  constexpr float kQuadSize{ kLineThickness * 2.0f };
+  const glm::vec2 dir{ glm::normalize(gizmo->Origin - head_scaled) *
+                       kQuadSize };
+  const glm::vec2 a{ head_scaled + dir }, b{ head_scaled - dir };
+  const ImVec2 points[4]{ a + glm::vec2{ dir.y, -dir.x },
+                          a - glm::vec2{ dir.y, -dir.x },
+                          b + glm::vec2{ -dir.y, dir.x },
+                          b - glm::vec2{ -dir.y, dir.x } };
+  g.DrawList->AddConvexPolyFilled(points, 4, color);
+#endif
+}
+static void RenderScaleTrail(ImGuizmoAxis axis_idx) {
+  const ImGuizmoContext &g{ GImGuizmo };
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  const glm::vec3 &dir_axis{ kUnitDirections[axis_idx] };
+
+  const glm::vec2 head_scaled{ WorldToScreen(
+    (dir_axis * gizmo->Scale[axis_idx]) * gizmo->ScreenFactor,
+    gizmo->ModelViewProjMatrix) };
+  g.DrawList->AddCircleFilled(head_scaled, kCircleRadius, 0xFFFFFFFF);
+}
+
+// TEXT:
+
+static void RenderText(const glm::vec2 &position, const char *text) {
+  const ImGuizmoContext &g{ GImGuizmo };
+  g.DrawList->AddText(position + 15.0f, GetColorU32(ImGuizmoCol_TextShadow),
+                      text);
+  g.DrawList->AddText(position + 14.0f, GetColorU32(ImGuizmoCol_Text), text);
+}
+
+static const char *kInfoMasks[]{
+  // -- Translation:
+  "X : %5.3f",                     // 0
+  "Y : %5.3f",                     // 1
+  "Z : %5.3f",                     // 2
+  "Y : %5.3f Z : %5.3f",           // 3
+  "X : %5.3f Z : %5.3f",           // 6
+  "X : %5.3f Y : %5.3f",           // 9
+  "X : %5.3f Y : %5.3f Z : %5.3f", // 0
+
+  // -- Rotation:
+  "X : %5.2f deg %5.2f rad",      // 0
+  "Y : %5.2f deg %5.2f rad",      // 1
+  "Z : %5.2f deg %5.2f rad",      // 2
+  "Screen : %5.2f deg %5.2f rad", // 0
+
+  // -- Scale
+  "XYZ : %5.2f" // 0
+};
+static const int kInfoDataIndices[]{
+  0, 1, 2, // XYZ
+  1, 2, 0, // YZ (0-unused)
+  0, 2, 0, // XZ (0-unused)
+  0, 1, 0, // XY (0-unused)
+};
+
+static void RenderTranslationInfo() {
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  const ImGuizmoAxisFlags &flags{ gizmo->ActiveManipulationFlags };
+  const char *mask{ nullptr };
+  int start_idx{ 0 };
+  if (HasSingleAxis(flags)) {
+    const ImGuizmoAxis axis_idx{ GetAxisIdx(flags, false) };
+    mask = kInfoMasks[axis_idx];
+    start_idx = axis_idx;
+  } else if (HasPlane(flags)) {
+    const ImGuizmoPlane planeIdx{ GetPlaneIdx(flags) };
+    mask = kInfoMasks[ImGuizmoAxis_COUNT + planeIdx];
+    start_idx = ImGuizmoAxis_COUNT + (ImGuizmoPlane_COUNT * planeIdx);
+  } else {
+    mask = kInfoMasks[ImGuizmoAxis_COUNT + ImGuizmoPlane_COUNT];
+  }
+
+  const glm::vec3 delta_info{ gizmo->ModelMatrix[3].xyz() -
+                              gizmo->DragTranslationOrigin };
+
+  char info_buffer[128]{};
+  ImFormatString(info_buffer, sizeof(info_buffer), mask,
+                 delta_info[kInfoDataIndices[start_idx]],
+                 delta_info[kInfoDataIndices[start_idx + 1]],
+                 delta_info[kInfoDataIndices[start_idx + 2]]);
+  RenderText(gizmo->Origin, info_buffer);
+}
+static void RenderRotationInfo() {
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  const ImGuizmoAxisFlags flags{ gizmo->ActiveManipulationFlags };
+  const char *mask{ nullptr };
+  if (HasSingleAxis(flags)) {
+    const ImGuizmoAxis axis_idx{ (GetAxisIdx(flags, false)) };
+    mask = kInfoMasks[ImGuizmoAxis_COUNT + ImGuizmoPlane_COUNT + 1 + axis_idx];
+  } else {
+    mask = kInfoMasks[(ImGuizmoAxis_COUNT * 2) + ImGuizmoPlane_COUNT];
+  }
+
+  char info_buffer[128]{};
+  ImFormatString(info_buffer, sizeof(info_buffer), mask,
+                 glm::degrees(gizmo->RotationAngle), gizmo->RotationAngle);
+  RenderText(gizmo->Origin, info_buffer);
+}
+static void RenderScaleInfo() {
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  const ImGuizmoAxisFlags flags{ gizmo->ActiveManipulationFlags };
+  const char *mask{ nullptr };
+  int start_idx{ 0 };
+  if (HasSingleAxis(flags)) {
+    const ImGuizmoAxis axis_idx{ GetAxisIdx(flags, false) };
+    mask = kInfoMasks[axis_idx];
+    start_idx = axis_idx;
+  } else {
+    if (glm::all(glm::equal(gizmo->Scale, glm::vec3{ gizmo->Scale.x })))
+      mask = kInfoMasks[11];
+    else
+      mask = kInfoMasks[6];
+  }
+
+  char info_buffer[128]{};
+  ImFormatString(info_buffer, sizeof(info_buffer), mask,
+                 gizmo->Scale[kInfoDataIndices[start_idx]],
+                 gizmo->Scale[kInfoDataIndices[start_idx + 1]],
+                 gizmo->Scale[kInfoDataIndices[start_idx + 2]]);
+  RenderText(gizmo->Origin, info_buffer);
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] TRANSLATION
+//-----------------------------------------------------------------------------
+
+static ImGuizmoAxisFlags FindTranslationHover() {
+  if (!CanActivate()) return ImGuizmoAxisFlags_None;
+
+  ImGuizmoAxisFlags hover_flags{ ImGuizmoAxisFlags_None };
+  if (IsCoreHovered()) hover_flags |= ImGuizmoAxisFlags_ALL;
+  if (hover_flags != ImGuizmoAxisFlags_ALL) {
+    for (int plane = 0; plane < 3; ++plane)
+      if (IsPlaneHovered(plane)) {
+        hover_flags |= PlaneToFlags(plane);
+        break;
+      }
+    if (!HasPlane(hover_flags)) {
+      for (int axis = 0; axis < 3; ++axis)
+        if (IsAxisHovered(axis)) {
+          hover_flags |= AxisToFlag(axis, false);
+          break;
+        }
+    }
+  }
+  return hover_flags;
+}
+static glm::vec4 BuildTranslatePlane() {
+  const ImGuizmoContext &g{ GImGuizmo };
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  const ImGuizmoAxisFlags flags{ gizmo->ActiveManipulationFlags };
+
+  glm::vec3 move_plane_normal;
+  if (HasPlane(flags)) {
+    move_plane_normal = gizmo->ModelMatrix[GetPlaneIdx(flags)];
+  } else if (HasSingleAxis(flags)) {
+    const glm::vec3 dir{ gizmo->ModelMatrix[GetAxisIdx(flags, false)] };
+    const glm::vec3 camera_to_model_normalized{ glm::normalize(
+      gizmo->ModelMatrix[3].xyz() - g.Camera.Eye) };
+    const glm::vec3 orthoDir{ glm::cross(dir, camera_to_model_normalized) };
+    move_plane_normal = glm::normalize(glm::cross(dir, orthoDir));
+  } else { // special movement
+    move_plane_normal = -g.Camera.Forward;
+  }
+  return BuildPlane(gizmo->ModelMatrix[3], move_plane_normal);
+}
+static void BeginTranslation() {
+  const ImGuiIO &io{ ImGui::GetIO() };
+  ImGuizmoContext &g{ GImGuizmo };
+  ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  g.BackupModelMatrix = gizmo->SourceModelMatrix;
+  g.DragOrigin = io.MousePos;
+
+  gizmo->DragTranslationOrigin = gizmo->ModelMatrix[3];
+  gizmo->TranslationPlane = BuildTranslatePlane();
+  const auto length{ IntersectRayPlane(g.Ray, gizmo->TranslationPlane) };
+  gizmo->TranslationPlaneOrigin = g.Ray.Start + g.Ray.Direction * length;
+  gizmo->ModelRelativeOrigin =
+    (gizmo->TranslationPlaneOrigin - gizmo->ModelMatrix[3].xyz()) *
+    (1.0f / gizmo->ScreenFactor);
+}
+static void ContinueTranslation(const float *snap) {
+  const ImGuizmoContext &g{ GImGuizmo };
+  ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  const ImGuizmoAxisFlags flags{ gizmo->ActiveManipulationFlags };
+
+  const float length{ glm::abs(
+    IntersectRayPlane(g.Ray, gizmo->TranslationPlane)) };
+  const glm::vec3 target_position{ g.Ray.Start + g.Ray.Direction * length };
+  const glm::vec3 new_position{ target_position - gizmo->ModelRelativeOrigin *
+                                                    gizmo->ScreenFactor };
+
+  glm::vec3 delta{ new_position - gizmo->ModelMatrix[3].xyz };
+  if (HasSingleAxis(flags)) {
+    const ImGuizmoAxis axis_idx{ GetAxisIdx(flags, false) };
+    const glm::vec3 axis_value{ gizmo->ModelMatrix[axis_idx] };
+    const float length_on_axis{ glm::dot(axis_value, delta) };
+    delta = axis_value * length_on_axis;
+  }
+
+  if (snap) {
+    glm::vec3 cumulative_delta{ gizmo->ModelMatrix[3].xyz + delta -
+                                gizmo->DragTranslationOrigin };
+    bool apply_rotation_localy{ gizmo->Mode == ImGuizmoMode_Local ||
+                                flags == ImGuizmoAxisFlags_ALL };
+    if (apply_rotation_localy) {
+      glm::mat4 source_model_normalized{ gizmo->SourceModelMatrix };
+      for (int axis = 0; axis < 3; ++axis)
+        source_model_normalized[axis] =
+          glm::normalize(source_model_normalized[axis]);
+      cumulative_delta = glm::inverse(source_model_normalized) *
+                         glm::vec4{ cumulative_delta, 0.0f };
+      ComputeSnap(cumulative_delta, snap);
+      cumulative_delta =
+        source_model_normalized * glm::vec4{ cumulative_delta, 0.0f };
+    } else {
+      ComputeSnap(cumulative_delta, snap);
+    }
+    delta = gizmo->DragTranslationOrigin + cumulative_delta -
+            gizmo->ModelMatrix[3].xyz;
+  }
+
+  if (delta != gizmo->LastTranslationDelta) {
+    gizmo->ModelMatrix = glm::translate(delta) * gizmo->SourceModelMatrix;
+    // Handle locked axes
+    for (int axis = 0; axis < 3; ++axis) {
+      if (gizmo->LockedAxesFlags & AxisToFlag(axis, false))
+        gizmo->ModelMatrix[3][axis] = gizmo->DragTranslationOrigin[axis];
+    }
+    gizmo->Dirty = true;
+  }
+  gizmo->LastTranslationDelta = delta;
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] ROTATION
+//-----------------------------------------------------------------------------
+
+static ImGuizmoAxisFlags FindRotationHover() {
+  if (!CanActivate()) return ImGuizmoAxisFlags_None;
+
+  ImGuizmoAxisFlags hover_flags{ ImGuizmoAxisFlags_None };
+  if (IsRotationRingHovered()) hover_flags |= ImGuizmoAxisFlags_ALL;
+  if (hover_flags != ImGuizmoAxisFlags_ALL) {
+    for (int axis = 0; axis < 3; ++axis) {
+      if (IsRotationAxisHovered(axis)) {
+        hover_flags |= AxisToFlag(axis, false);
+        break;
+      }
+    }
+  }
+  return hover_flags;
+}
+static glm::vec4 BuildRotationPlane() {
+  const ImGuizmoContext &g{ GImGuizmo };
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  const ImGuizmoAxisFlags flags{ gizmo->ActiveManipulationFlags };
+
+  glm::vec3 point, plane_normal;
+  if (HasSingleAxis(flags)) {
+    point = gizmo->Mode == ImGuizmoMode_Local ? gizmo->ModelMatrix[3]
+                                              : gizmo->SourceModelMatrix[3];
+    plane_normal = gizmo->ModelMatrix[GetAxisIdx(flags, false)];
+  } else {
+    point = gizmo->SourceModelMatrix[3];
+    plane_normal = -g.Camera.Forward;
+  }
+  return BuildPlane(point, plane_normal);
+}
+static void BeginRotation() {
+  const ImGuiIO &io{ ImGui::GetIO() };
+  ImGuizmoContext &g{ GImGuizmo };
+  ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  g.DragOrigin = io.MousePos;
+  g.BackupModelMatrix = gizmo->SourceModelMatrix;
+
+  gizmo->TranslationPlane = BuildRotationPlane();
+  const float length{ IntersectRayPlane(g.Ray, gizmo->TranslationPlane) };
+  gizmo->RotationVectorSource = glm::normalize(
+    g.Ray.Start + g.Ray.Direction * length - gizmo->ModelMatrix[3].xyz);
+  gizmo->RotationAngleOrigin = gizmo->ComputeAngleOnPlane();
+}
+static void ContinueRotation(const float *snap) {
+  ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  gizmo->RotationAngle = gizmo->ComputeAngleOnPlane();
+  if (snap) ComputeSnap(gizmo->RotationAngle, glm::radians(snap[0]));
+
+  const glm::vec3 rotation_axis_local_space{ glm::normalize(
+    glm::mat3{ gizmo->InversedModelMatrix } *
+    glm::vec3{ gizmo->TranslationPlane }) };
+
+  float angle = gizmo->RotationAngle - gizmo->RotationAngleOrigin;
+  glm::mat4 delta_rotation{ glm::rotate(angle, rotation_axis_local_space) };
+
+  if (gizmo->RotationAngle != gizmo->RotationAngleOrigin) {
+    // @todo Handle locked axes ...
+
+    if (gizmo->Mode == ImGuizmoMode_Local) {
+      const glm::mat4 scale_origin{ glm::scale(gizmo->ModelScaleOrigin) };
+      gizmo->ModelMatrix *= delta_rotation * scale_origin;
+    } else {
+      glm::mat4 result{ gizmo->SourceModelMatrix };
+      result[3] = glm::vec4{ glm::vec3{ 0.0f }, 1.0f };
+      gizmo->ModelMatrix = delta_rotation * result;
+      gizmo->ModelMatrix[3] = gizmo->SourceModelMatrix[3];
+    }
+    gizmo->Dirty = true;
+  }
+  gizmo->RotationAngleOrigin = gizmo->RotationAngle;
+}
+
 //-----------------------------------------------------------------------------
 // [SECTION] SCALE
 //-----------------------------------------------------------------------------
 
-ImGuizmoAxisFlags FindScaleHover() {
+static ImGuizmoAxisFlags FindScaleHover() {
+  if (!CanActivate()) return ImGuizmoAxisFlags_None;
+
   ImGuizmoAxisFlags hover_flags{ ImGuizmoAxisFlags_None };
   if (IsCoreHovered()) hover_flags |= ImGuizmoAxisFlags_ALL;
   if (hover_flags != ImGuizmoAxisFlags_ALL) {
@@ -1313,8 +1403,7 @@ ImGuizmoAxisFlags FindScaleHover() {
   }
   return hover_flags;
 }
-
-glm::vec4 BuildScalePlane() {
+static glm::vec4 BuildScalePlane() {
   const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
 
   const ImGuizmoAxisFlags flags{ gizmo->ActiveManipulationFlags };
@@ -1326,8 +1415,7 @@ glm::vec4 BuildScalePlane() {
     return BuildPlane(gizmo->ModelMatrix[3], gizmo->ModelMatrix[2]);
   }
 }
-
-void BeginScale() {
+static void BeginScale() {
   ImGuizmoContext &g{ GImGuizmo };
   ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
 
@@ -1346,7 +1434,7 @@ void BeginScale() {
   for (int axis = 0; axis < 3; ++axis)
     gizmo->ScaleValueOrigin[axis] = glm::length(gizmo->SourceModelMatrix[axis]);
 }
-void ContinueScale(const float *snap) {
+static void ContinueScale(const float *snap) {
   const ImGuiIO &io{ ImGui::GetIO() };
   const ImGuizmoContext &g{ GImGuizmo };
   ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
@@ -1395,50 +1483,10 @@ void ContinueScale(const float *snap) {
 //-----------------------------------------------------------------------------
 // [SECTION] CAGE
 //-----------------------------------------------------------------------------
-
-//
 // @todo ...
-//
-
-//-----------------------------------------------------------------------------
-// [SECTION]
 //-----------------------------------------------------------------------------
 
-/** @todo Remove me */
-void ComputeFrustumPlanes(glm::vec4 frustum[6], const float *clip) {
-  frustum[0].x = clip[3] - clip[0];
-  frustum[0].y = clip[7] - clip[4];
-  frustum[0].z = clip[11] - clip[8];
-  frustum[0].w = clip[15] - clip[12];
 
-  frustum[1].x = clip[3] + clip[0];
-  frustum[1].y = clip[7] + clip[4];
-  frustum[1].z = clip[11] + clip[8];
-  frustum[1].w = clip[15] + clip[12];
-
-  frustum[2].x = clip[3] + clip[1];
-  frustum[2].y = clip[7] + clip[5];
-  frustum[2].z = clip[11] + clip[9];
-  frustum[2].w = clip[15] + clip[13];
-
-  frustum[3].x = clip[3] - clip[1];
-  frustum[3].y = clip[7] - clip[5];
-  frustum[3].z = clip[11] - clip[9];
-  frustum[3].w = clip[15] - clip[13];
-
-  frustum[4].x = clip[3] - clip[2];
-  frustum[4].y = clip[7] - clip[6];
-  frustum[4].z = clip[11] - clip[10];
-  frustum[4].w = clip[15] - clip[14];
-
-  frustum[5].x = clip[3] + clip[2];
-  frustum[5].y = clip[7] + clip[6];
-  frustum[5].z = clip[11] + clip[10];
-  frustum[5].w = clip[15] + clip[14];
-
-  for (int i = 0; i < 6; ++i)
-    frustum[i] = glm::normalize(frustum[i]);
-}
 
 //-----------------------------------------------------------------------------
 // [SECTION] PUBLIC INTERFACE
@@ -1447,33 +1495,35 @@ void ComputeFrustumPlanes(glm::vec4 frustum[6], const float *clip) {
 void PrintContext() {
   const ImGuiIO &io{ ImGui::GetIO() };
   ImGuizmoContext &g{ GImGuizmo };
-  ImGuizmoWidget *gizmo{ g.CurrentGizmo };
+  ImGuizmoWidget *gizmo{ g.ActiveGizmo };
 
-  ImGui::Begin("ImGuizmo::Debug");
-
-  auto topLeft = g.Viewport.GetTL();
-  auto size = g.Viewport.GetSize();
-  ImGui::Text("Viewport = (%.f,%.f) %.fx%.f", topLeft.x, topLeft.y, size.x,
+  const glm::vec2 top_left{ g.Viewport.GetTL() };
+  const glm::vec2 size{ g.Viewport.GetSize() };
+  ImGui::Text("Viewport = (%.f,%.f) %.fx%.f", top_left.x, top_left.y, size.x,
               size.y);
+  ImGui::Text("DragOrigin = (%.f, %.f)", g.DragOrigin.x, g.DragOrigin.y);
 
+  ImGui::SetNextItemOpen(true);
   if (ImGui::TreeNode("Camera")) {
     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-
-    ImGui::InputFloat3("Right", &g.Camera.Right[0], "%.2f");
-    ImGui::InputFloat3("Up", &g.Camera.Up[0], "%.2f");
-    ImGui::InputFloat3("Forward", &g.Camera.Forward[0], "%.2f");
-    ImGui::InputFloat3("Eye", &g.Camera.Eye[0], "%.2f");
+    
+    ImGui::InputFloat3("Right", glm::value_ptr(g.Camera.Right), "%.2f");
+    ImGui::InputFloat3("Up", glm::value_ptr(g.Camera.Up), "%.2f");
+    ImGui::InputFloat3("Forward", glm::value_ptr(g.Camera.Forward), "%.2f");
+    ImGui::InputFloat3("Eye", glm::value_ptr(g.Camera.Eye), "%.2f");
 
     ImGui::PopItemFlag();
     ImGui::TreePop();
   }
+  
+  ImGui::SetNextItemOpen(true);
   if (ImGui::TreeNode("Ray")) {
     ImGui::Text("x: %.f y: %.f", io.MousePos.x, io.MousePos.y);
 
     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-    ImGui::InputFloat3("Start", &g.Ray.Start[0], "%.2f");
-    ImGui::InputFloat3("End", &g.Ray.End[0], "%.2f");
-    ImGui::InputFloat3("Direction", &g.Ray.Direction[0], "%.2f");
+    ImGui::InputFloat3("Start", glm::value_ptr(g.Ray.Start), "%.2f");
+    ImGui::InputFloat3("End", glm::value_ptr(g.Ray.End), "%.2f");
+    ImGui::InputFloat3("Direction", glm::value_ptr(g.Ray.Direction), "%.2f");
 
     ImGui::PopItemFlag();
     ImGui::TreePop();
@@ -1482,12 +1532,70 @@ void PrintContext() {
   if (gizmo) {
     ImGui::Text("ID = %d", gizmo->ID);
     ImGui::Text("ActiveOperation: %d", gizmo->ActiveOperation);
-    ImGui::Text("ActiveManipulation: %d", gizmo->ActiveManipulationFlags);
+    ImGui::Text("ActiveManipulationFlags: %d", gizmo->ActiveManipulationFlags);
 
+    ImGui::SetNextItemOpen(true);
     if (ImGui::TreeNode("Gizmo")) {
-      ImGui::Text("Origin (screen space): [%.2f, %.2f]", gizmo->Origin.x,
-                  gizmo->Origin.y);
+      ImGui::Text("Origin: [%.2f, %.2f]", gizmo->Origin.x, gizmo->Origin.y);
       ImGui::Text("RingRadius: %.2f", gizmo->RingRadius);
+      ImGui::Text("ScreenFactor: %.2f", gizmo->ScreenFactor);
+      ImGui::TreePop();
+    }
+
+    ImGui::SetNextItemOpen(true);
+    if (ImGui::TreeNode("Shared")) {
+      ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+
+      ImGui::InputFloat3("TranslationPlane",
+                         glm::value_ptr(gizmo->TranslationPlane));
+      ImGui::InputFloat3("TranslationPlaneOrigin",
+                         glm::value_ptr(gizmo->TranslationPlaneOrigin));
+      ImGui::InputFloat3("ModelRelativeOrigin",
+                         glm::value_ptr(gizmo->ModelRelativeOrigin));
+      ImGui::InputFloat3("DragTranslationOrigin",
+                         glm::value_ptr(gizmo->DragTranslationOrigin));
+      
+      ImGui::PopItemFlag();
+      ImGui::TreePop();
+    }
+
+    ImGui::SetNextItemOpen(true);
+    if (ImGui::TreeNode("Translation")) {
+      ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+
+      ImGui::InputFloat3("LastTranslationDelta",
+                         glm::value_ptr(gizmo->LastTranslationDelta));
+
+      ImGui::PopItemFlag();
+      ImGui::TreePop();
+    }
+    
+    ImGui::SetNextItemOpen(true);
+    if (ImGui::TreeNode("Rotation")) {
+      ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+
+      ImGui::InputFloat3("ModelScaleOrigin",
+                         glm::value_ptr(gizmo->ModelScaleOrigin));
+      ImGui::InputFloat3("RotationVectorSource",
+                         glm::value_ptr(gizmo->RotationVectorSource));
+
+      ImGui::Text("RotationAngle: %.2f rad", gizmo->RotationAngle);
+      ImGui::Text("RotationAngleOrigin: %.2f rad", gizmo->RotationAngleOrigin);
+
+      ImGui::PopItemFlag();
+      ImGui::TreePop();
+    }
+    
+    ImGui::SetNextItemOpen(true);
+    if (ImGui::TreeNode("Scale")) {
+      ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+
+      ImGui::InputFloat3("Scale", glm::value_ptr(gizmo->Scale));
+      ImGui::InputFloat3("LastScale", glm::value_ptr(gizmo->LastScale));
+      ImGui::InputFloat3("ScaleValueOrigin",
+                         glm::value_ptr(gizmo->ScaleValueOrigin));
+
+      ImGui::PopItemFlag();
       ImGui::TreePop();
     }
 
@@ -1507,81 +1615,21 @@ void PrintContext() {
     ImGui::TreePop();
   }
 #endif
-
-    if (ImGui::TreeNode("Translation")) {
-      ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-
-      ImGui::InputFloat3("DragTranslationOrigin",
-                         &gizmo->DragTranslationOrigin[0]);
-      ImGui::InputFloat3("LastTranslationDelta",
-                         &gizmo->LastTranslationDelta[0]);
-      ImGui::InputFloat3("ModelRelativeOrigin", &gizmo->ModelRelativeOrigin[0]);
-      ImGui::InputFloat3("TranslationPlaneOrigin",
-                         &gizmo->TranslationPlaneOrigin[0]);
-
-      ImGui::PopItemFlag();
-      ImGui::TreePop();
-    }
-    if (ImGui::TreeNode("Rotation")) {
-      ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-
-      ImGui::InputFloat3("RotationVectorSource",
-                         &gizmo->RotationVectorSource[0]);
-      ImGui::InputFloat("RotationAngle", &gizmo->RotationAngle);
-      ImGui::InputFloat("RotationAngleOrigin", &gizmo->RotationAngleOrigin);
-
-      ImGui::PopItemFlag();
-      ImGui::TreePop();
-    }
-    if (ImGui::TreeNode("Scale")) {
-      ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-
-      ImGui::InputFloat3("ModelScaleOrigin", &gizmo->ModelScaleOrigin[0]);
-      ImGui::InputFloat3("ScaleValueOrigin", &gizmo->ScaleValueOrigin[0]);
-      ImGui::InputFloat3("Scale", &gizmo->Scale[0]);
-      ImGui::InputFloat3("LastScale", &gizmo->LastScale[0]);
-
-      ImGui::PopItemFlag();
-      ImGui::TreePop();
-    }
   }
+}
 
-  ImGui::End();
+void SetConfigFlags(ImGuizmoConfigFlags flags) {
+  GImGuizmo.ConfigFlags = flags;
 }
 
 void SetViewport(const ImVec2 &position, const ImVec2 &size) {
-  SetViewport({ position, position + size });
+  GImGuizmo.Viewport = ImRect{ position, position + size };
 }
 void SetViewport(float x, float y, float width, float height) {
   SetViewport({ x, y }, { width, height });
 }
 void SetDrawlist(ImDrawList *drawList) {
   GImGuizmo.DrawList = drawList ? drawList : ImGui::GetWindowDrawList();
-}
-
-void CreateCanvas(const char *name) {
-  ImGui::PushStyleColor(ImGuiCol_WindowBg, 0);
-  ImGui::PushStyleColor(ImGuiCol_Border, 0);
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-
-  constexpr ImGuiWindowFlags flags{
-    ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration |
-    ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs |
-    ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus
-  };
-
-  ImGui::Begin(name, nullptr, flags);
-  SetDrawlist(ImGui::GetWindowDrawList());
-  SetViewport(ImGui::GetWindowPos(), ImGui::GetWindowSize());
-  ImGui::End();
-  ImGui::PopStyleVar();
-  ImGui::PopStyleColor(2);
-}
-void CreateCanvas(const char *name, const ImVec2 &position,
-                  const ImVec2 &size) {
-  ImGui::SetNextWindowPos(position);
-  ImGui::SetNextWindowSize(size);
-  CreateCanvas(name);
 }
 
 bool Manipulate(ImGuizmoMode mode, ImGuizmoOperation operation, float *model,
@@ -1599,7 +1647,6 @@ bool Manipulate(ImGuizmoMode mode, ImGuizmoOperation operation, float *model,
       break;
     }
   }
-  PrintContext();
   return End();
 }
 
@@ -1623,25 +1670,20 @@ void SetCamera(const float *view, const float *projection, bool isOrtho) {
 }
 
 bool Begin(ImGuizmoMode mode, float *model, ImGuizmoAxisFlags locked_axes) {
-  IM_ASSERT(model && "Model matrix required");
-
   ImGuizmoContext &g{ GImGuizmo };
+  IM_ASSERT(model && "Model matrix required");
   IM_ASSERT(!g.LockedModelMatrix && "Nesting forbidden");
   g.LockedModelMatrix = model;
-  //IM_ASSERT(g.DrawList);
-  if (g.DrawList == nullptr) g.DrawList = ImGui::GetWindowDrawList();
-  
-  const glm::vec2 win_pos{ ImGui::GetWindowPos() };
-  const glm::vec2 region_min{ ImGui::GetWindowContentRegionMin() };
-  const glm::vec2 region_max{ ImGui::GetWindowContentRegionMax() };
-  SetViewport(win_pos + region_min, region_max - region_min);
+  if (!g.DrawList) g.DrawList = ImGui::GetWindowDrawList();
+  g.Viewport = CalcViewport();
 
   auto id = static_cast<ImGuiID>(reinterpret_cast<long long>(model));
   ImGuizmoWidget *gizmo{ FindGizmoById(id) };
-  if (gizmo == nullptr) gizmo = CreateNewGizmo(id);
+  if (!gizmo) gizmo = CreateNewGizmo(id);
   g.CurrentGizmo = gizmo;
 
   if (!ImGui::GetIO().MouseDown[0]) {
+    g.DragOrigin = glm::vec2{ 0.0f };
     g.ActiveGizmo = nullptr;
     gizmo->ActiveManipulationFlags = ImGuizmoAxisFlags_None;
   }
@@ -1649,8 +1691,8 @@ bool Begin(ImGuizmoMode mode, float *model, ImGuizmoAxisFlags locked_axes) {
     gizmo->ActiveOperation = ImGuizmoOperation_None;
 
   gizmo->Mode = mode;
-  gizmo->LockedAxesFlags = locked_axes;
   gizmo->Load(model);
+  gizmo->LockedAxesFlags = locked_axes;
   g.Ray = RayCast(g.Camera.ViewProjectionMatrix);
 
   const glm::vec3 camera_space_position{ gizmo->ModelViewProjMatrix *
@@ -1658,12 +1700,11 @@ bool Begin(ImGuizmoMode mode, float *model, ImGuizmoAxisFlags locked_axes) {
   return g.Camera.IsOrtho ? true : camera_space_position.z >= 0.001f;
 }
 bool End() {
-  const ImGuiIO &io{ ImGui::GetIO() };
   ImGuizmoContext &g{ GImGuizmo };
   ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
   IM_ASSERT(g.LockedModelMatrix && "It seems that you didn't call Begin()");
 
-  if (io.MouseDown[1] && gizmo->ActiveManipulationFlags) {
+  if (ImGui::GetIO().MouseClicked[1] && gizmo->ActiveManipulationFlags) {
     gizmo->ModelMatrix = g.BackupModelMatrix;
     gizmo->Dirty = true;
     gizmo->ActiveManipulationFlags = ImGuizmoAxisFlags_None;
@@ -1697,7 +1738,7 @@ void Translate(const float *snap) {
   if (!gizmo->ActiveManipulationFlags ||
       !(g.ConfigFlags & ImGuizmoConfigFlags_CloakOnManipulate)) {
     for (int axis = 0; axis < 3; ++axis)
-      RenderAxis(axis, hover_flags);
+      RenderTranslateAxis(axis, hover_flags);
     for (int plane = 0; plane < 3; ++plane)
       RenderPlane(plane, hover_flags);
     RenderCore(hover_flags);
@@ -1711,7 +1752,6 @@ void Rotate(const float *snap) {
   const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
 
   ImGuizmoAxisFlags hover_flags{ FindRotationHover() };
-
   bool held;
   if (GizmoBehavior(ImGuizmoOperation_Rotate, hover_flags, &held))
     BeginRotation();
@@ -1742,238 +1782,188 @@ void Scale(const float *snap) {
   ImGuizmoAxisFlags hover_flags{ FindScaleHover() };
   bool held;
   if (GizmoBehavior(ImGuizmoOperation_Scale, hover_flags, &held)) {
-    gizmo->Mode = ImGuizmoMode_Local;
-    gizmo->Load(g.LockedModelMatrix);
     BeginScale();
   }
-  if (held) {
-    gizmo->Mode = ImGuizmoMode_Local;
-    gizmo->Load(g.LockedModelMatrix);
-    ContinueScale(snap);
-  }
+  if (held) ContinueScale(snap);
 
   if (!gizmo->ActiveManipulationFlags ||
       !(g.ConfigFlags & ImGuizmoConfigFlags_CloakOnManipulate)) {
     for (int axis = 0; axis < 3; ++axis)
-      RenderAxis(axis, hover_flags);
+      RenderScaleAxis(axis, hover_flags);
     RenderCore(hover_flags);
   }
 
-  if (gizmo->ActiveOperation == ImGuizmoOperation_Scale) RenderScaleInfo();
+  if (gizmo->ActiveOperation == ImGuizmoOperation_Scale) {
+    //RenderScaleTrail(1);
+    RenderScaleInfo();
+  }
 }
 
 void Cage(const float *bounds, const float *snap) {}
 
-bool ViewManipBehavior(ImGuiID id, bool inside, bool *out_held) {
+static bool ViewManipBehavior(bool hovered, bool *out_held) {
   const ImGuiIO &io{ ImGui::GetIO() };
+  
+  static bool active{ false };
+  if (!io.MouseDown[1]) active = false;
 
-  bool pressed{ false };
-  bool held{ false };
-  if (inside) {
-    if (io.MouseClicked[0]) {
-      pressed = true;
-    }
-  }
-
-  if (io.MouseDown[0] &&
-      glm::any(glm::greaterThan(glm::abs(glm::vec2{ io.MouseDelta }),
-                                glm::vec2{ 0.0f }))) {
-    held = true;
-  }
-
-  /*
-if (!pressed) {
-  if (io.MouseDown[0] && ImGui::IsWindowFocused() &&
-      (io.MouseDelta.x || io.MouseDelta.y)) {
-    held = true;
-  }
-}*/
+  bool pressed{ hovered && (io.MouseClicked[0] || io.MouseClicked[1]) };
+  if (pressed) active = true;
+  
+  bool held{ active && io.MouseDown[1] };
 
   if (out_held) *out_held = held;
-
   return pressed;
 }
 
-void ViewManip(float *view, const float length, const ImVec2 &position,
-               const ImVec2 &size, ImU32 backgroundColor) {
+void ViewManipulate(float *view, const float length, ImU32 background_color) {
   const ImGuiIO &io{ ImGui::GetIO() };
+  ImDrawList *draw_list{ ImGui::GetWindowDrawList() };
 
-  // ImGui::GetItemID();
-  ImGuiID parentId{ ImGui::GetCurrentWindow()->ID };
-  // ImGui::GetCurrentContext()->ActiveIdWindow
+  const ImRect bb{ CalcViewport() };
+  draw_list->AddRectFilled(bb.Min, bb.Max, background_color);
 
-  auto win = ImGui::GetCurrentWindow();
-  win->GetID(0);
+  // ---
 
-  ImGui::Text("win id = %d", win->ID);
-  ImGui::Text("itm id = %d", ImGui::GetItemID());
-  ImGui::Text("act id = %d", ImGui::IsItemActive());
-  //  ImGui::Text("isactiv = %d", );
+  const glm::mat4 inversed_view_matrix{ glm::inverse(glm::make_mat4(view)) };
+  const glm::vec3 forward{ inversed_view_matrix[2][0],
+                           inversed_view_matrix[2][1],
+                           inversed_view_matrix[2][2] };
+  const glm::vec3 up{ inversed_view_matrix[1][0], inversed_view_matrix[1][1],
+                      inversed_view_matrix[1][2] };
 
-  bool isInside{ ImRect(position, position + size).Contains(io.MousePos) };
+  constexpr float distance{ 2.0f };
+  const glm::mat4 manip_view{ glm::lookAt(forward * distance, glm::vec3{ 0.0f },
+                                          up) };
+  const glm::mat4 manip_projection{ glm::perspective(
+    glm::radians(60.0f), bb.GetWidth() / bb.GetHeight(), 0.1f, 10.0f) };
 
-  if (isInside) {
-    ImGui::Text("yeah!");
-  }
+  const glm::mat4 manip_view_proj{ manip_projection * manip_view };
+  const ImGuizmoRay ray{ RayCast(manip_view_proj, bb.GetTL(), bb.GetSize()) };
 
+  // ---
+
+  bool hovered{ ImGui::IsWindowHovered() && bb.Contains(io.MousePos) };
   bool held;
-  if (ViewManipBehavior(parentId, isInside, &held)) {
-    ImGui::Text("click!");
-  }
+  bool pressed{ ViewManipBehavior(hovered, &held) };
 
-  if (held) {
-    ImGui::Text("drag!");
-  }
-}
+  static bool animate{ false };
+  static glm::vec3 target_up{ 0.0f };
+  static glm::vec3 target_forward{ 0.0f };
+  if (held) animate = false;
 
-void ViewManipulate(float *view, const float length, const ImVec2 &position,
-                    const ImVec2 &size, ImU32 backgroundColor) {
-  const ImGuiIO &io{ ImGui::GetIO() };
+  static const glm::vec2 panel_positions[]{ { 0.75f, 0.75f }, { 0.25f, 0.75f },
+                                            { 0.00f, 0.75f }, { 0.75f, 0.25f },
+                                            { 0.25f, 0.25f }, { 0.00f, 0.25f },
+                                            { 0.75f, 0.00f }, { 0.25f, 0.00f },
+                                            { 0.00f, 0.00f } };
+  static const glm::vec2 panel_sizes[]{ { 0.25f, 0.25f }, { 0.50f, 0.25f },
+                                        { 0.25f, 0.25f }, { 0.25f, 0.50f },
+                                        { 0.50f, 0.50f }, { 0.25f, 0.50f },
+                                        { 0.25f, 0.25f }, { 0.50f, 0.25f },
+                                        { 0.25f, 0.25f } };
 
-  ImDrawList *drawList{ ImGui::GetCurrentWindow()->DrawList };
-  drawList->AddRectFilled(position, position + size, backgroundColor);
+  /*
+  ImGui::Text("hovered = %d", hovered);
+  ImGui::Text("pressd = %d", pressed);
+  ImGui::Text("held = %d", held);
+  */
 
-  static bool isDragging{ false };
-  static bool isClicking{ false };
-  static bool isInside{ false };
+  bool cubes[27]{};
+  for (int pass = 0; pass < 2; ++pass) {
+    for (int face = 0; face < 6; ++face) {
+      const int normal_index{ face % 3 };
+      const int perp_x_index{ (normal_index + 1) % 3 };
+      const int perp_y_index{ (normal_index + 2) % 3 };
 
-  static glm::vec3 interpolationUp{ 0.0f };
-  static glm::vec3 interpolationDir{ 0.0f };
-  static int interpolationFrames{ 0 };
+      const float invert{ (face > 2) ? -1.0f : 1.0f };
+      const glm::vec3 index_vector_x{ kUnitDirections[perp_x_index] * invert };
+      const glm::vec3 index_vector_y{ kUnitDirections[perp_y_index] * invert };
+      const glm::vec3 box_origin{ kUnitDirections[normal_index] * -invert -
+                                  index_vector_x - index_vector_y };
 
-  constexpr float kDistance{ 2.0f };
-  const glm::mat4 cubeProjection{ glm::perspective(
-    glm::radians(60.0f), size.x / size.y, 0.01f, 1000.0f) };
+      const glm::vec3 n{ kUnitDirections[normal_index] * invert };
+      const glm::vec3 view_space_normal{ glm::normalize(manip_view *
+                                                        glm::vec4{ n, 0.0f }) };
+      const glm::vec3 view_space_point{ manip_view *
+                                        glm::vec4{ n * 0.5f, 1.0f } };
+      const glm::vec4 view_space_face_plane{ BuildPlane(view_space_point,
+                                                        view_space_normal) };
 
-  const glm::mat4 inversedViewMatrix{ glm::inverse(
-    *reinterpret_cast<const glm::mat4 *>(view)) };
-  const glm::vec3 forward{ inversedViewMatrix[2][0], inversedViewMatrix[2][1],
-                           inversedViewMatrix[2][2] };
-  const glm::vec3 up{ inversedViewMatrix[1][0], inversedViewMatrix[1][1],
-                      inversedViewMatrix[1][2] };
-  const glm::vec3 eye{ forward * kDistance };
-  const glm::mat4 cubeView{ glm::lookAt(eye, glm::vec3{ 0.0f }, up) };
+      if (view_space_face_plane.w > 0.0f) continue; // Back face culling
 
-  const ImGuizmoRay ray{ RayCast(cubeProjection * cubeView, position, size) };
-
-  static const glm::vec2 kPanelPosition[]{ { 0.75f, 0.75f }, { 0.25f, 0.75f },
-                                           { 0.00f, 0.75f }, { 0.75f, 0.25f },
-                                           { 0.25f, 0.25f }, { 0.00f, 0.25f },
-                                           { 0.75f, 0.00f }, { 0.25f, 0.00f },
-                                           { 0.00f, 0.00f } };
-  static const glm::vec2 kPanelSize[]{ { 0.25f, 0.25f }, { 0.50f, 0.25f },
-                                       { 0.25f, 0.25f }, { 0.25f, 0.50f },
-                                       { 0.50f, 0.50f }, { 0.25f, 0.50f },
-                                       { 0.25f, 0.25f }, { 0.50f, 0.25f },
-                                       { 0.25f, 0.25f } };
-
-  bool boxes[27]{};
-  for (int iPass = 0; iPass < 2; ++iPass) {
-    for (int iFace = 0; iFace < 6; ++iFace) {
-      const int normalIndex{ iFace % 3 };
-      const int perpXIndex{ (normalIndex + 1) % 3 };
-      const int perpYIndex{ (normalIndex + 2) % 3 };
-
-      const float invert{ (iFace > 2) ? -1.0f : 1.0f };
-      const glm::vec3 indexVectorX{ kUnitDirections[perpXIndex] * invert };
-      const glm::vec3 indexVectorY{ kUnitDirections[perpYIndex] * invert };
-      const glm::vec3 boxOrigin{ kUnitDirections[normalIndex] * -invert -
-                                 indexVectorX - indexVectorY };
-
-      // Plane local space
-      const glm::vec3 n{ kUnitDirections[normalIndex] * invert };
-      const glm::vec3 viewSpaceNormal{ glm::vec3{
-        glm::normalize(cubeView * glm::vec4{ n, 0.0f }) } };
-      const glm::vec3 viewSpacePoint{ cubeView * glm::vec4{ n * 0.5f, 1.0f } };
-      const glm::vec4 viewSpaceFacePlane{ BuildPlane(viewSpacePoint,
-                                                     viewSpaceNormal) };
-
-      if (viewSpaceFacePlane.w > 0) continue; // Back face culling
-
-      const glm::vec4 facePlane{ BuildPlane(n * 0.5f, n) };
-      const float len{ IntersectRayPlane(ray, facePlane) };
-      const glm::vec3 posOnPlane{ ray.Start + ray.Direction * len -
-                                  (n * 0.5f) };
-
-      const float localX{
-        glm::dot(kUnitDirections[perpXIndex], posOnPlane) * invert + 0.5f
+      const glm::vec4 face_plane{ BuildPlane(n * 0.5f, n) };
+      const float lenght{ IntersectRayPlane(ray, face_plane) };
+      const glm::vec3 pos_on_plane{ ray.Start + ray.Direction * lenght -
+                                    (n * 0.5f) };
+      const float local_x{
+        glm::dot(kUnitDirections[perp_x_index], pos_on_plane) * invert + 0.5f
       };
-      const float localY{
-        glm::dot(kUnitDirections[perpYIndex], posOnPlane) * invert + 0.5f
+      const float local_y{
+        glm::dot(kUnitDirections[perp_y_index], pos_on_plane) * invert + 0.5f
       };
 
-      // Panels
-      const glm::vec3 dx{ kUnitDirections[perpXIndex] };
-      const glm::vec3 dy{ kUnitDirections[perpYIndex] };
-      const glm::vec3 origin{ kUnitDirections[normalIndex] - dx - dy };
-      for (int iPanel = 0; iPanel < 9; ++iPanel) {
-        const glm::vec2 p{ kPanelPosition[iPanel] * 2.0f };
-        const glm::vec2 s{ kPanelSize[iPanel] * 2.0f };
-        const glm::vec3 panelPos[4]{ dx * p.x + dy * p.y,
-                                     dx * p.x + dy * (p.y + s.y),
-                                     dx * (p.x + s.x) + dy * (p.y + s.y),
-                                     dx * (p.x + s.x) + dy * p.y };
+      const glm::vec3 dx{ kUnitDirections[perp_x_index] };
+      const glm::vec3 dy{ kUnitDirections[perp_y_index] };
+      const glm::vec3 origin{ kUnitDirections[normal_index] - dx - dy };
+      for (int panel = 0; panel < 9; ++panel) {
+        const glm::vec2 p{ panel_positions[panel] * 2.0f };
+        const glm::vec2 s{ panel_sizes[panel] * 2.0f };
+        const glm::vec3 panel_pos[4]{ dx * p.x + dy * p.y,
+                                      dx * p.x + dy * (p.y + s.y),
+                                      dx * (p.x + s.x) + dy * (p.y + s.y),
+                                      dx * (p.x + s.x) + dy * p.y };
 
-        ImVec2 faceCoordsScreen[4];
-        for (auto iCoord = 0; iCoord < 4; ++iCoord) {
-          faceCoordsScreen[iCoord] =
-            WorldToScreen((panelPos[iCoord] + origin) * 0.5f * invert,
-                          cubeProjection * cubeView, position, size);
+        ImVec2 face_coords_screen[4];
+        for (auto coord = 0; coord < 4; ++coord) {
+          face_coords_screen[coord] =
+            WorldToScreen((panel_pos[coord] + origin) * 0.5f * invert,
+                          manip_view_proj, bb.GetTL(), bb.GetSize());
         }
 
-        const glm::vec2 panelCorners[2]{
-          kPanelPosition[iPanel], kPanelPosition[iPanel] + kPanelSize[iPanel]
+        const glm::vec2 panel_corners[2]{
+          panel_positions[panel], panel_positions[panel] + panel_sizes[panel]
         };
-        const bool insidePanel{ localX > panelCorners[0].x &&
-                                localX < panelCorners[1].x &&
-                                localY > panelCorners[0].y &&
-                                localY < panelCorners[1].y };
+        const bool panel_hovered{ local_x > panel_corners[0].x &&
+                                  local_x < panel_corners[1].x &&
+                                  local_y > panel_corners[0].y &&
+                                  local_y < panel_corners[1].y };
 
-        const glm::vec3 boxCoord{
-          boxOrigin + indexVectorX * static_cast<float>(iPanel % 3) +
-          indexVectorY * static_cast<float>(iPanel / 3) + glm::vec3{ 1.0f }
+        const glm::vec3 box_coord{
+          box_origin + index_vector_x * static_cast<float>(panel % 3) +
+          index_vector_y * static_cast<float>(panel / 3) + glm::vec3{ 1.0f }
         };
-        const auto boxCoordInt{ static_cast<int>(
-          boxCoord.x * 9.0f + boxCoord.y * 3.0f + boxCoord.z) };
-        IM_ASSERT(boxCoordInt < 27);
-
-        boxes[boxCoordInt] |= insidePanel && (!isDragging);
-
-        // Draw face with lighter color
-        if (iPass) {
-          drawList->AddConvexPolyFilled(
-            faceCoordsScreen, 4,
-            (GetColorU32(ImGuizmoCol_AxisX + normalIndex) | 0xff1f1f1f) |
-              (isInside ? 0x080808 : 0));
-          if (boxes[boxCoordInt]) {
-            drawList->AddConvexPolyFilled(faceCoordsScreen, 4, 0x8060A0F0);
-
-            if (!io.MouseDown[0] && !isDragging && isClicking) {
-              // Apply new view direction
-              const int cx{ boxCoordInt / 9 };
-              const int cy{ (boxCoordInt - cx * 9) / 3 };
-              const int cz{ boxCoordInt % 3 };
-              interpolationDir = glm::normalize(1.0f - glm::vec3{ cx, cy, cz });
-
-              if (glm::abs(glm::dot(interpolationDir, kReferenceUp)) >
+        const auto cube_idx{ static_cast<int>(
+          box_coord.x * 9.0f + box_coord.y * 3.0f + box_coord.z) };
+        IM_ASSERT(cube_idx < 27);
+        cubes[cube_idx] |= panel_hovered && !held;
+        if (pass) {
+          draw_list->AddConvexPolyFilled(
+            face_coords_screen, 4,
+            (GetColorU32(ImGuizmoCol_AxisX + normal_index) | 0xFF1F1F1F) |
+              (hovered ? 0x080808 : 0));
+          if (cubes[cube_idx]) {
+            draw_list->AddConvexPolyFilled(
+              face_coords_screen, 4, GetColorU32(ImGuizmoCol_Hovered, 0.541f));
+            if (pressed) {
+              const int cx{ cube_idx / 9 };
+              const int cy{ (cube_idx - cx * 9) / 3 };
+              const int cz{ cube_idx % 3 };
+              target_forward = glm::normalize(1.0f - glm::vec3{ cx, cy, cz });
+              if (glm::abs(glm::dot(target_forward, kReferenceUp)) >
                   1.0f - 0.01f) {
-                glm::vec3 right{ inversedViewMatrix[0] };
-                if (glm::abs(right.x) > glm::abs(right.z)) {
+                glm::vec3 right{ inversed_view_matrix[0] };
+                if (glm::abs(right.x) > glm::abs(right.z))
                   right.z = 0.0f;
-                } else {
+                else
                   right.x = 0.0f;
-                }
                 right = glm::normalize(right);
-                interpolationUp =
-                  glm::normalize(glm::cross(interpolationDir, right));
+                target_up = glm::normalize(glm::cross(target_forward, right));
               } else {
-                interpolationUp = kReferenceUp;
+                target_up = kReferenceUp;
               }
-              interpolationFrames = 40;
-              isClicking = false;
-            }
-            if (io.MouseDown[0] && !isDragging) {
-              isClicking = true;
+              animate = true;
+              pressed = false;
             }
           }
         }
@@ -1981,223 +1971,46 @@ void ViewManipulate(float *view, const float length, const ImVec2 &position,
     }
   }
 
-  //
-  //
-  //
+  const glm::vec3 target_pos{ inversed_view_matrix[3] -
+                              inversed_view_matrix[2] * length };
 
-  ImGui::Text("infr = %d", interpolationFrames);
+  if (animate) {
+    constexpr float speed{ 10.0f };
+    const float a{ speed * io.DeltaTime };
+    const glm::vec3 interpolated_forward{ glm::normalize(
+      glm::lerp(inversed_view_matrix[2].xyz(), target_forward, a)) };
 
-  const glm::vec3 cameraTarget{ inversedViewMatrix[3] -
-                                inversedViewMatrix[2] * length };
+    if (glm::distance(interpolated_forward, target_forward) < 0.001f)
+      animate = false;
 
-  if (interpolationFrames) {
-    interpolationFrames--;
-
-    const glm::vec3 newDir{ glm::normalize(
-      glm::lerp(glm::vec3{ inversedViewMatrix[2] }, interpolationDir, 0.2f)) };
 #if 0
-    const glm::vec3 newUp{ glm::normalize(
-      glm::lerp(glm::vec3{ inversedViewMatrix[1] }, interpolationUp, 0.3f)) };
-#else
-    const glm::vec3 newUp{ interpolationUp };
+    const glm::vec3 interpolated_up{ glm::normalize(
+      glm::lerp(inversed_view_matrix[1].xyz(), target_up, a)) };
+    ImGui::Text("dot = %.2f", glm::dot(interpolated_up, target_up));
 #endif
-    const glm::vec3 newEye{ cameraTarget + newDir * length };
+
+    const glm::vec3 new_eye{ target_pos + interpolated_forward * length };
     *reinterpret_cast<glm::mat4 *>(view) =
-      glm::lookAt(newEye, cameraTarget, newUp);
-  }
-  isInside = ImRect(position, position + size).Contains(io.MousePos);
-
-  //
-  // Drag view
-  //
-
-  if (!isDragging && io.MouseDown[0] && isInside &&
-      (glm::abs(io.MouseDelta.x) > 0.0f || glm::abs(io.MouseDelta.y) > 0.0f)) {
-    isDragging = true;
-    isClicking = false;
-  } else if (isDragging && !io.MouseDown[0]) {
-    isDragging = false;
+      glm::lookAt(new_eye, target_pos, target_up);
   }
 
-  if (isDragging) {
-    auto angles = -glm::vec2{ io.MouseDelta } * 0.01f;
+  const glm::vec2 mouse_delta{ io.MouseDelta };
+  if (held && glm::any(glm::notEqual(mouse_delta, glm::vec2{ 0.0f }))) {
+    constexpr float drag_sensitivity{ 0.01f };
+    const glm::vec2 angles{ -mouse_delta * drag_sensitivity };
     const glm::mat4 rx{ glm::rotate(angles.x, kReferenceUp) };
-    const glm::mat4 ry{ glm::rotate(angles.y,
-                                    glm::vec3{ inversedViewMatrix[0] }) };
+    const glm::mat4 ry{ glm::rotate(angles.y, inversed_view_matrix[0].xyz()) };
     const glm::mat4 roll{ ry * rx };
-
-    glm::vec3 newDir{ glm::normalize(roll * inversedViewMatrix[2]) };
-    glm::vec3 planeDir{ glm::cross(glm::vec3{ inversedViewMatrix[0] },
-                                   kReferenceUp) };
-
-    planeDir.y = 0.0f;
-    planeDir = glm::normalize(planeDir);
-    const float dt{ glm::dot(planeDir, newDir) };
-    ImGui::Text("dt = %.2f", dt);
-    /*
-    if (dt < 0.1f) {
-      newDir += planeDir * dt;
-      newDir = glm::normalize(newDir);
-    }
-    */
-
-    if (dt > 0.1f) {
-      const glm::vec3 newEye{ cameraTarget + newDir * length };
+    const glm::vec3 new_forward{ glm::normalize(roll *
+                                                inversed_view_matrix[2]) };
+    glm::vec3 plane_dir{ glm::cross(inversed_view_matrix[0].xyz(),
+                                    kReferenceUp) };
+    plane_dir.y = 0.0f;
+    plane_dir = glm::normalize(plane_dir);
+    if (glm::dot(plane_dir, new_forward) > 0.05f) {
+      const glm::vec3 new_eye{ target_pos + new_forward * length };
       *reinterpret_cast<glm::mat4 *>(view) =
-        glm::lookAt(newEye, cameraTarget, kReferenceUp);
-    }
-  }
-
-  ImGui::Text("isInside %d", isInside);
-  ImGui::Text("isClicking %d", isClicking);
-  ImGui::Text("isDragging %d", isDragging);
-}
-
-void DrawCubes(const float *view, const float *projection,
-               const float *modelMatrices, int modelMatrixCount) {
-  const ImGuizmoContext &g{ GImGuizmo };
-
-  struct cubeFace_t {
-    float z;
-    ImVec2 faceCoordsScreen[4];
-    ImU32 color;
-  };
-  ImVector<cubeFace_t> faces;
-  for (int i = 0; i < modelMatrixCount * 6; ++i)
-    faces.push_back(cubeFace_t{});
-
-  glm::vec4 frustum[6]{};
-
-  const glm::mat4 viewProjectionMatrix{ glm::make_mat4(projection) *
-                                        glm::make_mat4(view) };
-  ComputeFrustumPlanes(frustum, glm::value_ptr(viewProjectionMatrix));
-  int cubeFaceCount = 0;
-  for (int cube = 0; cube < modelMatrixCount; ++cube) {
-    const glm::mat4 modelMatrix{ glm::make_mat4(&modelMatrices[cube * 16]) };
-    const glm::mat4 modelViewProjMatrix{ viewProjectionMatrix * modelMatrix };
-
-    for (int iFace = 0; iFace < 6; ++iFace) {
-      const int normalIndex{ (iFace % 3) };
-      const int perpXIndex{ (normalIndex + 1) % 3 };
-      const int perpYIndex{ (normalIndex + 2) % 3 };
-      const float invert{ (iFace > 2) ? -1.0f : 1.0f };
-
-      const glm::vec3 faceCoords[4]{
-        kUnitDirections[normalIndex] + kUnitDirections[perpXIndex] +
-          kUnitDirections[perpYIndex],
-        kUnitDirections[normalIndex] + kUnitDirections[perpXIndex] -
-          kUnitDirections[perpYIndex],
-        kUnitDirections[normalIndex] - kUnitDirections[perpXIndex] -
-          kUnitDirections[perpYIndex],
-        kUnitDirections[normalIndex] - kUnitDirections[perpXIndex] +
-          kUnitDirections[perpYIndex],
-      };
-
-      const glm::vec3 centerPosition{
-        modelMatrix *
-        glm::vec4{ (kUnitDirections[normalIndex] * 0.5f * invert), 1.0f }
-      };
-      const glm::vec4 centerPositionVP{
-        modelViewProjMatrix *
-        glm::vec4{ (kUnitDirections[normalIndex] * 0.5f * invert), 1.0f }
-      };
-
-      bool inFrustum{ true };
-      for (int iFrustum = 0; iFrustum < 6; ++iFrustum) {
-        const float dist{ DistanceToPlane(centerPosition, frustum[iFrustum]) };
-        if (dist < 0.0f) {
-          inFrustum = false;
-          break;
-        }
-      }
-      if (!inFrustum) continue;
-
-      cubeFace_t &cubeFace{ faces[cubeFaceCount] };
-      for (int iCoord = 0; iCoord < 4; iCoord++) {
-        cubeFace.faceCoordsScreen[iCoord] = WorldToScreen(
-          faceCoords[iCoord] * 0.5f * invert, modelViewProjMatrix);
-      }
-
-      cubeFace.color = GetColorU32(ImGuizmoCol_AxisX + normalIndex) | 0x808080;
-      // cubeFace.color = priv::GetColorU32(ImGuizmoCol_AxisX + normalIndex,
-      // 0.9);//      | 0x808080;
-
-      cubeFace.z = centerPositionVP.z / centerPositionVP.w;
-      cubeFaceCount++;
-    }
-  }
-
-  qsort(faces.begin(), cubeFaceCount, sizeof(cubeFace_t),
-        [](void const *_a, void const *_b) {
-          auto *a = (cubeFace_t *)_a;
-          auto *b = (cubeFace_t *)_b;
-          if (a->z < b->z) {
-            return 1;
-          }
-          return -1;
-        });
-
-  for (int iFace = 0; iFace < cubeFaceCount; ++iFace) {
-    const cubeFace_t &cubeFace{ faces[iFace] };
-    g.DrawList->AddConvexPolyFilled(cubeFace.faceCoordsScreen, 4,
-                                    cubeFace.color);
-  }
-}
-void DrawGrid(const float *view, const float *projection, const float *model,
-              const float gridSize) {
-  ImGuizmoContext &g{ GImGuizmo };
-
-  const glm::mat4 viewProjectionMatrix{ glm::make_mat4(projection) *
-                                        glm::make_mat4(view) };
-
-  glm::vec4 frustum[6]{};
-  ComputeFrustumPlanes(frustum, glm::value_ptr(viewProjectionMatrix));
-
-  const glm::mat4 modelViewProjMatrix{ viewProjectionMatrix *
-                                       glm::make_mat4(model) };
-
-  for (float f = -gridSize; f <= gridSize; f += 1.0f) {
-    for (int dir = 0; dir < 2; dir++) {
-      glm::vec3 ptA{ glm::vec3{ dir ? -gridSize : f, 0.0f,
-                                dir ? f : -gridSize } };
-      glm::vec3 ptB{ dir ? gridSize : f, 0.0f, dir ? f : gridSize };
-      bool visible{ true };
-      for (int i = 0; i < 6; i++) {
-        float dA{ DistanceToPlane(ptA, frustum[i]) };
-        float dB{ DistanceToPlane(ptB, frustum[i]) };
-        if (dA < 0.0f && dB < 0.0f) {
-          visible = false;
-          break;
-        }
-        if (dA > 0.0f && dB > 0.0f) {
-          continue;
-        }
-        if (dA < 0.0f) {
-          float len = glm::abs(dA - dB);
-          float t = glm::abs(dA) / len;
-          ptA = glm::lerp(ptA, ptB, t);
-        }
-        if (dB < 0.0f) {
-          float len = glm::abs(dB - dA);
-          float t = glm::abs(dB) / len;
-          ptB = glm::lerp(ptB, ptA, t);
-        }
-      }
-      if (visible) {
-        ImU32 col{ kMediumGrayColor };
-        // auto colr = ImGui::ColorConvertU32ToFloat4(0xFF909090);
-
-        col = (fmodf(fabsf(f), 10.0f) < kEpsilon) ? 0xFF909090 : col;
-        col = (fabsf(f) < kEpsilon) ? kDarkGrayColor : col;
-
-        float thickness{ 1.0f };
-        thickness = (fmodf(fabsf(f), 10.0f) < kEpsilon) ? 1.5f : thickness;
-        thickness = (fabsf(f) < kEpsilon) ? 2.3f : thickness;
-
-        g.DrawList->AddLine(WorldToScreen(ptA, modelViewProjMatrix),
-                            WorldToScreen(ptB, modelViewProjMatrix), col,
-                            thickness);
-      }
+        glm::lookAt(new_eye, target_pos, kReferenceUp);
     }
   }
 }
@@ -2257,7 +2070,6 @@ ImGuizmoContext::~ImGuizmoContext() {
   GizmosById.Clear();
   CurrentGizmo = nullptr;
 }
-
 float ImGuizmoContext::GetAspectRatio() const {
   return Viewport.GetWidth() / Viewport.GetHeight();
 }
@@ -2283,16 +2095,6 @@ void ImGuizmoWidget::Load(const float *model) {
     ModelScaleOrigin[axis] = glm::length(SourceModelMatrix[axis]);
 
   InversedModelMatrix = glm::inverse(ModelMatrix);
-
-
-  glm::vec4 pointRight = InversedModelMatrix[0];
-  pointRight.w = 1.0f;
-  pointRight = g.Camera.ViewProjectionMatrix * pointRight;
-
-  auto sf =
-    g.Style.GizmoScale / (pointRight.x / pointRight.w -
-                          ModelViewProjMatrix[3].x / ModelViewProjMatrix[3].w);
-
   const glm::vec3 right_view_inverse{ InversedModelMatrix *
                                       glm::vec4{ g.Camera.Right, 0.0f } };
   const float right_length{ GetSegmentLengthClipSpace(glm::vec3{ 0.0f },
@@ -2302,7 +2104,6 @@ void ImGuizmoWidget::Load(const float *model) {
   RingRadius = g.Style.GizmoScale /* 1.04f*/ * g.Viewport.GetWidth() * 0.55f;
   //RingRadius = 0.06 * g.Viewport.GetHeight();
 }
-
 float ImGuizmoWidget::ComputeAngleOnPlane() const {
   const ImGuizmoContext &g{ GImGuizmo };
 

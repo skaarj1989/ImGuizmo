@@ -19,7 +19,7 @@ layout(location = 1) out vec3 vNormal;
 layout(location = 2) out vec2 vTexCoord;
 void main() {
 	vFragPos = vec3(uModelMatrix * vec4(aPosition, 1.0));
-	vNormal = mat3(transpose(inverse(uModelMatrix))) * aNormal;  
+	vNormal = mat3(transpose(inverse(uModelMatrix))) * aNormal;
   vTexCoord = aTexCoord;
   
 	gl_Position = uProjectionMatrix * uViewMatrix * vec4(vFragPos, 1.0);

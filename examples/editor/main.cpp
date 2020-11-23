@@ -14,6 +14,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtx/wrap.hpp"
 
+#include "Geometry.hpp"
 #include "Materials.hpp"
 
 #define LOWER_LEFT_ST { 0.0f, 1.0f }, { 1.0f, 0.0f }
@@ -22,10 +23,6 @@
 
 constexpr auto IdentityMatrix = glm::mat4{ 1.0f };
 
-struct vertex_t {
-  glm::vec3 position, normal;
-  glm::vec2 st;
-};
 struct entity_t {
   material_t Material{};
   glm::mat4 ModelMatrix{ 1.0f };
@@ -33,20 +30,24 @@ struct entity_t {
 entity_t *CurrentEntity{ nullptr };
 
 struct {
-  GLuint ModelMatrix;
-
   struct {
     GLuint ProjectionMatrix, ViewMatrix;
     GLuint EyePos;
   } Camera;
+  GLuint ModelMatrix;
 
-  struct {
-    GLuint Direction, La, Ld, Ls;
-  } DirLight;
+  GLuint Mode;
+  GLuint Gamma;
 
   struct {
     GLuint Ka, Kd, Ks, Shininess;
   } Material;
+  struct {
+    GLuint Direction, La, Ld, Ls;
+  } DirLight;
+  struct {
+    GLuint Position, Radius, La, Ld, Ls;
+  } PointLight;
 } ShaderResources;
 struct {
   glm::ivec2 Size{ 1, 1 };
@@ -60,11 +61,19 @@ struct {
   GLuint VertexShader{ GL_NONE }, FragmentShader{ GL_NONE };
 
   struct {
-    glm::vec3 Direction{ 0.45f, -0.64f, 0.63f };
+    glm::vec3 Direction{ -0.2f, -1.0f, -0.3f };
     glm::vec3 Ambient{ 0.05f, 0.05f, 0.05f };
     glm::vec3 Diffuse{ 0.4f, 0.4f, 0.4f };
     glm::vec3 Specular{ 0.9f, 0.9f, 0.9f };
-  } Light;
+  } DirLight;
+
+  struct {
+    glm::vec3 Position{ 0.0f, 3.0f, 0.0f };
+    float Radius{ 5.0f };
+    glm::vec3 Ambient{ 0.05f, 0.05f, 0.05f };
+    glm::vec3 Diffuse{ 0.4f, 0.4f, 0.4f };
+    glm::vec3 Specular{ 0.9f, 0.9f, 0.9f };
+  } PointLight;
 
   std::vector<entity_t> Entities;
 
@@ -106,8 +115,6 @@ void CreateEntities(int num_entities) {
 
     Scene.Entities.push_back(entity_t{ it->second, model_matrix });
   }
-
-  CurrentEntity = &(*Scene.Entities.begin());
 }
 
 void GLAPIENTRY DebugCallback(GLenum source, GLenum type, GLuint id,
@@ -186,127 +193,11 @@ const char *GetShaderInfoLog(GLuint spo) {
 }
 
 void SetupGeometry() {
-  const vertex_t plane_vertices[] = {
-    { { 10.0f, 0.0f, 10.0f }, { 0.0f, 1.0f, 0.0f }, { 10.0f, 0.0f } },
-    { { -10.0f, 0.0f, -10.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 10.0f } },
-    { { -10.0f, 0.0f, 10.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
-
-    { { 10.0f, 0.0f, 10.0f }, { 0.0f, 1.0f, 0.0f }, { 10.0f, 0.0f } },
-    { { 10.0f, 0.0f, -10.0f }, { 0.0f, 1.0f, 0.0f }, { 10.0f, 10.0f } },
-    { { -10.0f, 0.0f, -10.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 10.0f } }
-  };
   glCreateBuffers(1, &Scene.PlaneVBO);
-  glNamedBufferStorage(Scene.PlaneVBO, sizeof(vertex_t) * 6, plane_vertices,
+  glNamedBufferStorage(Scene.PlaneVBO, sizeof(vertex_t) * 6, PlaneVertices,
                        GL_NONE);
-
-  const vertex_t cube_vertices[] = {
-    // back
-    { { -1.0f, -1.0f, -1.0f },
-      { 0.0f, 0.0f, -1.0f },
-      { 0.0f, 0.0f } }, // bottom-left
-    { { 1.0f, 1.0f, -1.0f },
-      { 0.0f, 0.0f, -1.0f },
-      { 1.0f, 1.0f } }, // top-right
-    { { 1.0f, -1.0f, -1.0f },
-      { 0.0f, 0.0f, -1.0f },
-      { 1.0f, 0.0f } }, // bottom-right
-    { { 1.0f, 1.0f, -1.0f },
-      { 0.0f, 0.0f, -1.0f },
-      { 1.0f, 1.0f } }, // top-right
-    { { -1.0f, -1.0f, -1.0f },
-      { 0.0f, 0.0f, -1.0f },
-      { 0.0f, 0.0f } }, // bottom-left
-    { { -1.0f, 1.0f, -1.0f },
-      { 0.0f, 0.0f, -1.0f },
-      { 0.0f, 1.0f } }, // top-left
-    // front face
-    { { -1.0f, -1.0f, 1.0f },
-      { 0.0f, 0.0f, 1.0f },
-      { 0.0f, 0.0f } }, // bottom-left
-    { { 1.0f, -1.0f, 1.0f },
-      { 0.0f, 0.0f, 1.0f },
-      { 1.0f, 0.0f } }, // bottom-right
-    { { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } }, // top-right
-    { { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } }, // top-right
-    { { -1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f } }, // top-left
-    { { -1.0f, -1.0f, 1.0f },
-      { 0.0f, 0.0f, 1.0f },
-      { 0.0f, 0.0f } }, // bottom-left
-                        // left face
-    { { -1.0f, 1.0f, 1.0f },
-      { -1.0f, 0.0f, 0.0f },
-      { 1.0f, 0.0f } }, // top-right
-    { { -1.0f, 1.0f, -1.0f },
-      { -1.0f, 0.0f, 0.0f },
-      { 1.0f, 1.0f } }, // top-left
-    { { -1.0f, -1.0f, -1.0f },
-      { -1.0f, 0.0f, 0.0f },
-      { 0.0f, 1.0f } }, // bottom-left
-    { { -1.0f, -1.0f, -1.0f },
-      { -1.0f, 0.0f, 0.0f },
-      { 0.0f, 1.0f } }, // bottom-left
-    { { -1.0f, -1.0f, 1.0f },
-      { -1.0f, 0.0f, 0.0f },
-      { 0.0f, 0.0f } }, // bottom-right
-    { { -1.0f, 1.0f, 1.0f },
-      { -1.0f, 0.0f, 0.0f },
-      { 1.0f, 0.0f } }, // top-right
-                        // right face
-    { { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f } }, // top-left
-    { { 1.0f, -1.0f, -1.0f },
-      { 1.0f, 0.0f, 0.0f },
-      { 0.0f, 1.0f } }, // bottom-right
-    { { 1.0f, 1.0f, -1.0f },
-      { 1.0f, 0.0f, 0.0f },
-      { 1.0f, 1.0f } }, // top-right
-    { { 1.0f, -1.0f, -1.0f },
-      { 1.0f, 0.0f, 0.0f },
-      { 0.0f, 1.0f } }, // bottom-right
-    { { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f } }, // top-left
-    { { 1.0f, -1.0f, 1.0f },
-      { 1.0f, 0.0f, 0.0f },
-      { 0.0f, 0.0f } }, // bottom-left
-                        // bottom face
-    { { -1.0f, -1.0f, -1.0f },
-      { 0.0f, -1.0f, 0.0f },
-      { 0.0f, 1.0f } }, // top-right
-    { { 1.0f, -1.0f, -1.0f },
-      { 0.0f, -1.0f, 0.0f },
-      { 1.0f, 1.0f } }, // top-left
-    { { 1.0f, -1.0f, 1.0f },
-      { 0.0f, -1.0f, 0.0f },
-      { 1.0f, 0.0f } }, // bottom-left
-    { { 1.0f, -1.0f, 1.0f },
-      { 0.0f, -1.0f, 0.0f },
-      { 1.0f, 0.0f } }, // bottom-left
-    { { -1.0f, -1.0f, 1.0f },
-      { 0.0f, -1.0f, 0.0f },
-      { 0.0f, 0.0f } }, // bottom-right
-    { { -1.0f, -1.0f, -1.0f },
-      { 0.0f, -1.0f, 0.0f },
-      { 0.0f, 1.0f } }, // top-right
-    // top face
-    { { -1.0f, 1.0f, -1.0f },
-      { 0.0f, 1.0f, 0.0f },
-      { 0.0f, 1.0f } }, // top-left
-    { { 1.0f, 1.0f, 1.0f },
-      { 0.0f, 1.0f, 0.0f },
-      { 1.0f, 0.0f } }, // bottom-right
-    { { 1.0f, 1.0f, -1.0f },
-      { 0.0f, 1.0f, 0.0f },
-      { 1.0f, 1.0f } }, // top-right
-    { { 1.0f, 1.0f, 1.0f },
-      { 0.0f, 1.0f, 0.0f },
-      { 1.0f, 0.0f } }, // bottom-right
-    { { -1.0f, 1.0f, -1.0f },
-      { 0.0f, 1.0f, 0.0f },
-      { 0.0f, 1.0f } }, // top-left
-    { { -1.0f, 1.0f, 1.0f },
-      { 0.0f, 1.0f, 0.0f },
-      { 0.0f, 0.0f } } // bottom-left
-  };
   glCreateBuffers(1, &Scene.CubeVBO);
-  glNamedBufferStorage(Scene.CubeVBO, sizeof(vertex_t) * 36, cube_vertices,
+  glNamedBufferStorage(Scene.CubeVBO, sizeof(vertex_t) * 36, CubeVertices,
                        GL_NONE);
 
   glCreateVertexArrays(1, &Scene.VAO);
@@ -347,17 +238,11 @@ void SetupShaders() {
   glGetProgramiv(Scene.FragmentShader, GL_LINK_STATUS, &link_status);
   if (!link_status) printf("%s\n", GetShaderInfoLog(Scene.FragmentShader));
 
+  ShaderResources.Mode = glGetUniformLocation(Scene.FragmentShader, "uMode");
+  ShaderResources.Gamma = glGetUniformLocation(Scene.FragmentShader, "uGamma");
+
   ShaderResources.Camera.EyePos =
     glGetUniformLocation(Scene.FragmentShader, "uEyePos");
-
-  ShaderResources.DirLight.Direction =
-    glGetUniformLocation(Scene.FragmentShader, "uDirLight.direction");
-  ShaderResources.DirLight.La =
-    glGetUniformLocation(Scene.FragmentShader, "uDirLight.La");
-  ShaderResources.DirLight.Ld =
-    glGetUniformLocation(Scene.FragmentShader, "uDirLight.Ld");
-  ShaderResources.DirLight.Ls =
-    glGetUniformLocation(Scene.FragmentShader, "uDirLight.Ls");
 
   ShaderResources.Material.Ka =
     glGetUniformLocation(Scene.FragmentShader, "uMaterial.Ka");
@@ -367,6 +252,27 @@ void SetupShaders() {
     glGetUniformLocation(Scene.FragmentShader, "uMaterial.Ks");
   ShaderResources.Material.Shininess =
     glGetUniformLocation(Scene.FragmentShader, "uMaterial.shininess");
+
+  ShaderResources.DirLight.Direction =
+    glGetUniformLocation(Scene.FragmentShader, "uDirLight.direction");
+  ShaderResources.DirLight.La =
+    glGetUniformLocation(Scene.FragmentShader, "uDirLight.base.La");
+  ShaderResources.DirLight.Ld =
+    glGetUniformLocation(Scene.FragmentShader, "uDirLight.base.Ld");
+  ShaderResources.DirLight.Ls =
+    glGetUniformLocation(Scene.FragmentShader, "uDirLight.base.Ls");
+
+  ShaderResources.PointLight.Position =
+    glGetUniformLocation(Scene.FragmentShader, "uPointLight.position");
+  ShaderResources.PointLight.Radius =
+    glGetUniformLocation(Scene.FragmentShader, "uPointLight.radius");
+  ShaderResources.PointLight.La =
+    glGetUniformLocation(Scene.FragmentShader, "uPointLight.base.La");
+  ShaderResources.PointLight.Ld =
+    glGetUniformLocation(Scene.FragmentShader, "uPointLight.base.Ld");
+  ShaderResources.PointLight.Ls =
+    glGetUniformLocation(Scene.FragmentShader, "uPointLight.base.Ls");
+
 
   static GLuint po;
   glCreateProgramPipelines(1, &po);
@@ -402,15 +308,27 @@ void UploadCamera() {
                             ShaderResources.Camera.ProjectionMatrix, 1,
                             GL_FALSE, glm::value_ptr(Scene.Camera.ProjectionMatrix));
 }
-void UploadLight() {
+void UploadLights() {
   glProgramUniform3fv(Scene.FragmentShader, ShaderResources.DirLight.Direction,
-                      1, glm::value_ptr(Scene.Light.Direction));
+                      1, glm::value_ptr(Scene.DirLight.Direction));
   glProgramUniform3fv(Scene.FragmentShader, ShaderResources.DirLight.La, 1,
-                      glm::value_ptr(Scene.Light.Ambient));
+                      glm::value_ptr(Scene.DirLight.Ambient));
   glProgramUniform3fv(Scene.FragmentShader, ShaderResources.DirLight.Ld, 1,
-                      glm::value_ptr(Scene.Light.Diffuse));
+                      glm::value_ptr(Scene.DirLight.Diffuse));
   glProgramUniform3fv(Scene.FragmentShader, ShaderResources.DirLight.Ls, 1,
-                      glm::value_ptr(Scene.Light.Specular));
+                      glm::value_ptr(Scene.DirLight.Specular));
+
+  glProgramUniform3fv(Scene.FragmentShader, ShaderResources.PointLight.Position, 1,
+                      glm::value_ptr(Scene.PointLight.Position));
+  glProgramUniform1f(Scene.FragmentShader, ShaderResources.PointLight.Radius,
+                     Scene.PointLight.Radius);
+  glProgramUniform3fv(Scene.FragmentShader, ShaderResources.PointLight.La, 1,
+                      glm::value_ptr(Scene.PointLight.Ambient));
+  glProgramUniform3fv(Scene.FragmentShader, ShaderResources.PointLight.Ld, 1,
+                      glm::value_ptr(Scene.PointLight.Diffuse));
+  glProgramUniform3fv(Scene.FragmentShader, ShaderResources.PointLight.Ls, 1,
+                      glm::value_ptr(Scene.PointLight.Specular));
+
 }
 void UploadMaterial(const material_t &material) {
   glProgramUniform3fv(Scene.FragmentShader, ShaderResources.Material.Ka, 1,
@@ -420,7 +338,7 @@ void UploadMaterial(const material_t &material) {
   glProgramUniform3fv(Scene.FragmentShader, ShaderResources.Material.Ks, 1,
                       glm::value_ptr(material.Ks));
   glProgramUniform1f(Scene.FragmentShader, ShaderResources.Material.Shininess,
-                     material.Shininess);
+                     material.Shininess * 128.0f);
 }
 
 void RenderModel(GLuint vbo, GLuint num_vertices,
@@ -451,7 +369,7 @@ void RenderScene() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   UploadCamera();
-  UploadLight();
+  UploadLights();
 
   UploadMaterial(MaterialPresets["WhiteRubber"]);
   RenderPlane();
@@ -481,41 +399,41 @@ void EditTransform(glm::mat4 &model_matrix) {
   static float bound_snap[]{ 0.1f, 0.1f, 0.1f };
   static bool bound_sizing{ false };
   static bool bound_sizing_snap{ false };
-
-  constexpr auto translate_key = GLFW_KEY_W;
-  constexpr auto rotate_key = GLFW_KEY_E;
-  constexpr auto scale_key = GLFW_KEY_R;
-  constexpr auto toggle_snap_key = GLFW_KEY_S;
-
-  if (ImGui::IsKeyPressed(translate_key))
+  
+  if (ImGui::IsKeyPressed(GLFW_KEY_W))
     TransformSettings.Operation = ImGuizmoOperation_Translate;
-  if (ImGui::IsKeyPressed(rotate_key))
+  if (ImGui::IsKeyPressed(GLFW_KEY_E))
     TransformSettings.Operation = ImGuizmoOperation_Rotate;
-  if (ImGui::IsKeyPressed(scale_key))
+  if (ImGui::IsKeyPressed(GLFW_KEY_R))
     TransformSettings.Operation = ImGuizmoOperation_Scale;
 
   if (ImGui::RadioButton("Translate", TransformSettings.Operation ==
-                                        ImGuizmoOperation_Translate))
+                                        ImGuizmoOperation_Translate)) {
     TransformSettings.Operation = ImGuizmoOperation_Translate;
+  }
   ImGui::SameLine();
   if (ImGui::RadioButton("Rotate", TransformSettings.Operation ==
-                                     ImGuizmoOperation_Rotate))
+                                     ImGuizmoOperation_Rotate)) {
     TransformSettings.Operation = ImGuizmoOperation_Rotate;
+  }
   ImGui::SameLine();
   if (ImGui::RadioButton("Scale", TransformSettings.Operation ==
-                                    ImGuizmoOperation_Scale))
+                                    ImGuizmoOperation_Scale)) {
     TransformSettings.Operation = ImGuizmoOperation_Scale;
+  }
 
   static float translation[3], rotation[3], scale[3];
   ImGuizmo::DecomposeMatrix(glm::value_ptr(model_matrix),
                             translation, rotation, scale);
+  constexpr int input_flags = ImGuiInputTextFlags_EnterReturnsTrue;
   bool input_modified{ false };
-  input_modified |= ImGui::InputFloat3("T", translation);
-  input_modified |= ImGui::InputFloat3("R", rotation);
-  input_modified |= ImGui::InputFloat3("S", scale);
-  if (input_modified)
+  input_modified |= ImGui::InputFloat3("T", translation, "%.3f", input_flags);
+  input_modified |= ImGui::InputFloat3("R", rotation, "%.3f", input_flags);
+  input_modified |= ImGui::InputFloat3("S", scale, "%.3f", input_flags);
+  if (input_modified) {
     ImGuizmo::RecomposeMatrix(translation, rotation, scale,
                               glm::value_ptr(model_matrix));
+  }
 
   if (TransformSettings.Operation != ImGuizmoOperation_Scale) {
     if (ImGui::RadioButton("Local",
@@ -524,14 +442,14 @@ void EditTransform(glm::mat4 &model_matrix) {
     }
     ImGui::SameLine();
     if (ImGui::RadioButton("Global",
-                           TransformSettings.Mode == ImGuizmoMode_Global)) {
-      TransformSettings.Mode = ImGuizmoMode_Global;
+                           TransformSettings.Mode == ImGuizmoMode_World)) {
+      TransformSettings.Mode = ImGuizmoMode_World;
     }
   } else {
     TransformSettings.Mode = ImGuizmoMode_Local;
   }
 
-  if (ImGui::IsKeyPressed(toggle_snap_key))
+  if (ImGui::IsKeyPressed(GLFW_KEY_S))
     TransformSettings.UseSnap = !TransformSettings.UseSnap;
   ImGui::Checkbox("", &TransformSettings.UseSnap);
   ImGui::SameLine();
@@ -588,14 +506,17 @@ int main(int argc, char *argv[]) {
                                        nullptr) };
   if (!window) return 1;
   glfwMakeContextCurrent(window);
-  glfwSwapInterval(1);
 
   if (!gladLoadGL()) {
     fprintf(stderr, "Failed to initialize OpenGL loader!\n");
     return 1;
   }
 
-  CreateEntities(2);
+  //CreateEntities(2);
+  Scene.Entities.push_back(
+    { MaterialPresets["Ruby"],
+      glm::translate(IdentityMatrix, glm::vec3{ 0.0f, 1.0f, 0.0f }) });
+  CurrentEntity = &(*Scene.Entities.begin());
 
   SetupDebugCallback();
   SetupGeometry();
@@ -620,7 +541,7 @@ int main(int argc, char *argv[]) {
   // io.ConfigViewportsNoTaskBarIcon = true;
 
   ImGui::StyleColorsDark();
-  ImGuizmo::StyleColorsUnreal();
+  ImGuizmo::StyleColorsBlender();
 
   // When viewports are enabled we tweak WindowRounding/WindowBg so platform
   // windows can look identical to regular ones.
@@ -632,6 +553,9 @@ int main(int argc, char *argv[]) {
 
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init();
+
+  glfwSwapInterval(1);
+
 
   float fov{ 60.0 };
 
@@ -687,19 +611,57 @@ int main(int argc, char *argv[]) {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    if (ImGui::Begin("ImGuizmoContext")) {
+      ImGuizmo::PrintContext();
+    }
+    ImGui::End();
+
+    if (ImGui::Begin("Test")) {
+      ImGui::Text("ConfigFlags");
+      static ImGuizmoConfigFlags config_flags{ 0 };
+      ImGui::CheckboxFlags("CloakOnManipulate", &config_flags,
+                           ImGuizmoConfigFlags_CloakOnManipulate);
+      ImGui::CheckboxFlags("HideLocked", &config_flags,
+                           ImGuizmoConfigFlags_HideLocked);
+      ImGui::CheckboxFlags("HasReversing", &config_flags,
+                           ImGuizmoConfigFlags_HasReversing);
+      ImGuizmo::SetConfigFlags(config_flags);
+
+      ImGui::Separator();
+      ImGuizmo::ShowStyleEditor();
+    }
+    ImGui::End();
+
+    if (ImGui::Begin("Renderer")) {
+      ImGui::ColorEdit3("Background Color",
+                        glm::value_ptr(Scene.BackgroundColor));
+
+      static int mode{ 0 };
+      if (ImGui::RadioButton("Phong", mode == 0)) mode = 0;
+      ImGui::SameLine();
+      if (ImGui::RadioButton("Blinn-Phong", mode == 1)) mode = 1;
+      glProgramUniform1i(Scene.FragmentShader, ShaderResources.Mode, mode);
+
+      static float gamma{ 2.2f };
+      ImGui::DragFloat("Gamma", &gamma, 0.01f, 0.1f, 5.0f);
+      glProgramUniform1f(Scene.FragmentShader, ShaderResources.Gamma, gamma);
+    }
+    ImGui::End();
+
+
     if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
 
+    if (ImGui::Begin("ViewManip")) {
+      ImGuizmo::ViewManipulate(glm::value_ptr(Scene.Camera.ViewMatrix), cam_distance);
+    }
+    ImGui::End();
+
     //ImGui::ShowStyleEditor();
-    ImGuizmo::ShowStyleEditor();
+    //ImGuizmo::ShowStyleEditor();
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
     if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_NoScrollbar)) {
       const glm::vec2 content_size{ ImGui::GetContentRegionAvail() };
-      /*
-      const auto content_top_left =
-        glm::vec2{ ImGui::GetWindowPos() } +
-        glm::vec2{ ImGui::GetWindowContentRegionMin() };
-      */
       if (glm::ivec2{ content_size } != Scene.Size) {
         ResizeFramebuffer(content_size);
       } else {
@@ -712,18 +674,17 @@ int main(int argc, char *argv[]) {
         if (ImGuizmo::Begin(TransformSettings.Mode,
                             glm::value_ptr(CurrentEntity->ModelMatrix),
                             TransformSettings.LockedAxes)) {
+          const float *snap{ TransformSettings.UseSnap ? TransformSettings.Snap
+                                                       : nullptr };
           switch (TransformSettings.Operation) {
           case ImGuizmoOperation_Translate:
-            ImGuizmo::Translate(
-              TransformSettings.UseSnap ? TransformSettings.Snap : nullptr);
+            ImGuizmo::Translate(snap);
             break;
           case ImGuizmoOperation_Rotate:
-            ImGuizmo::Rotate(TransformSettings.UseSnap ? TransformSettings.Snap
-                                                       : nullptr);
+            ImGuizmo::Rotate(snap);
             break;
           case ImGuizmoOperation_Scale:
-            ImGuizmo::Scale(TransformSettings.UseSnap ? TransformSettings.Snap
-                                                      : nullptr);
+            ImGuizmo::Scale(snap);
             break;
           }
         }
@@ -753,17 +714,22 @@ int main(int argc, char *argv[]) {
     }
     ImGui::End();
 
-    if (ImGui::Begin("Light")) {
-      ImGui::Text("Direction = %.2f, %.2f, %.2f", Scene.Light.Direction.x,
-                  Scene.Light.Direction.y, Scene.Light.Direction.z);
-      static bool light_modified{ false };
-      light_modified &=
-        ImGui::ColorEdit3("La", glm::value_ptr(Scene.Light.Ambient));
-      light_modified &= ImGui::ColorEdit3(
-        "Ld", glm::value_ptr(Scene.Light.Diffuse), ImGuiColorEditFlags_HDR);
-      light_modified &=
-        ImGui::ColorEdit3("Ls", glm::value_ptr(Scene.Light.Specular));
-      // if (light_modified) SetupLight();
+    if (ImGui::Begin("Lights")) {
+      ImGui::Text("Direction = %.2f, %.2f, %.2f", Scene.DirLight.Direction.x,
+                  Scene.DirLight.Direction.y, Scene.DirLight.Direction.z);
+      ImGui::ColorEdit3("La##DirLight", glm::value_ptr(Scene.DirLight.Ambient));
+      ImGui::ColorEdit3("Ld##DirLight", glm::value_ptr(Scene.DirLight.Diffuse),
+                        ImGuiColorEditFlags_HDR);
+      ImGui::ColorEdit3("Ls##DirLight", glm::value_ptr(Scene.DirLight.Specular));
+
+      ImGui::Separator();
+
+      ImGui::DragFloat3("Position", glm::value_ptr(Scene.PointLight.Position), 0.1f);
+      ImGui::DragFloat("Radius", &Scene.PointLight.Radius, 0.1f, 0.0f, 50.0f);
+      ImGui::ColorEdit3("La##PointLight", glm::value_ptr(Scene.PointLight.Ambient));
+      ImGui::ColorEdit3("Ld##PointLight", glm::value_ptr(Scene.PointLight.Diffuse),
+                        ImGuiColorEditFlags_HDR);
+      ImGui::ColorEdit3("Ls##PointLight", glm::value_ptr(Scene.PointLight.Specular));
     }
     ImGui::End();
 
@@ -778,15 +744,18 @@ int main(int argc, char *argv[]) {
     }
     ImGui::End();
 
+    #if 0
     constexpr auto view_size = 256;
     ImGui::SetNextWindowSize(glm::vec2{ view_size });
     if (ImGui::Begin("ViewManipulate", nullptr, ImGuiWindowFlags_NoResize)) {
       glm::vec2 position{ glm::vec2{ ImGui::GetWindowPos() } +
                           glm::vec2{ ImGui::GetWindowContentRegionMin() } };
-      ImGuizmo::ViewManipulate(glm::value_ptr(Scene.Camera.ViewMatrix), cam_distance,
-                               position, ImGui::GetContentRegionAvail(), 0x10101010);
+      //ImGuizmo::ViewManipulate(glm::value_ptr(Scene.Camera.ViewMatrix), cam_distance,
+      //                         position, ImGui::GetContentRegionAvail(), 0x10101010);
     }
     ImGui::End();
+    #endif
+
 
     ImGui::Render();
 
