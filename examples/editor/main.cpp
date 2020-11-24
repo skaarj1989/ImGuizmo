@@ -328,7 +328,6 @@ void UploadLights() {
                       glm::value_ptr(Scene.PointLight.Diffuse));
   glProgramUniform3fv(Scene.FragmentShader, ShaderResources.PointLight.Ls, 1,
                       glm::value_ptr(Scene.PointLight.Specular));
-
 }
 void UploadMaterial(const material_t &material) {
   glProgramUniform3fv(Scene.FragmentShader, ShaderResources.Material.Ka, 1,
@@ -378,7 +377,6 @@ void RenderScene() {
 }
 
 void EditMaterial(material_t &material) {
-  
   if (ImGui::BeginCombo("Preset", "")) {
     for (const auto &[name, preset] : MaterialPresets) {
       const bool is_selected = false;
@@ -484,10 +482,6 @@ void EditTransform(glm::mat4 &model_matrix) {
   ImGui::CheckboxFlags("Y", &TransformSettings.LockedAxes, ImGuizmoAxisFlags_Y);
   ImGui::SameLine();
   ImGui::CheckboxFlags("Z", &TransformSettings.LockedAxes, ImGuizmoAxisFlags_Z);
-}
-
-void UpdateCamera() {
-
 }
 
 int main(int argc, char *argv[]) {
@@ -648,7 +642,7 @@ int main(int argc, char *argv[]) {
 
     if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
 
-    ImGui::SetNextWindowSize(glm::vec2{ 128 });
+    ImGui::SetNextWindowSize(glm::vec2{ 256 });
     if (ImGui::Begin("View", nullptr, ImGuiWindowFlags_NoResize)) {
       ImGuizmo::ViewManipulate(glm::value_ptr(Scene.Camera.ViewMatrix),
                                cam_distance);
