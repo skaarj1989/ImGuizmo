@@ -1,5 +1,9 @@
 ### ImGuizmo
 
+[![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/skaarj1989/ImGuizmo)](https://www.codefactor.io/repository/github/skaarj1989/imguizmo/overview/master)
+![GitHub](https://img.shields.io/github/license/skaarj1989/ImGuizmo.svg)
+
+
 ![sample code output (classic)](https://github.com/skaarj1989/ImGuizmo/blob/gh-pages/example.gif?raw=true)
 
 #### Gizmo tools
