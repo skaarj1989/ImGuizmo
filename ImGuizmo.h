@@ -155,18 +155,20 @@ IMGUI_API void Scale(const float *snap = nullptr);
 /** @param snap */
 IMGUI_API void Cage(const float *bounds, const float *snap);
 
-IMGUI_API void ViewManipulate(float *view, const float length,
-                         ImU32 backgroundColor = 0x10101010);
-
 /**
  * @note Please note that this cubeview is patented by Autodesk:
  * https://patents.google.com/patent/US7782319B2/en It seems to be a defensive
  * patent in the US. I don't think it will bring troubles using it as other
  * software are using the same mechanics. But just in case, you are now warned!
- * 
+ *
  * @param [in] view Camera view, column-major matrix
  */
+IMGUI_API void ViewManipulate(float *view, const float length,
+                              const ImVec2 &position, const ImVec2 &size,
+                              ImU32 background_color = 0x10101010);
 
+IMGUI_API void ViewManipulate(float *view, const float length,
+                              ImU32 background_color = 0x10101010);
 
 //
 //

@@ -68,8 +68,8 @@ struct {
   } DirLight;
 
   struct {
-    glm::vec3 Position{ 0.0f, 3.0f, 0.0f };
-    float Radius{ 5.0f };
+    glm::vec3 Position{ 0.0f, 5.0f, 0.0f };
+    float Radius{ 6.0f };
     glm::vec3 Ambient{ 0.05f, 0.05f, 0.05f };
     glm::vec3 Diffuse{ 0.4f, 0.4f, 0.4f };
     glm::vec3 Specular{ 0.9f, 0.9f, 0.9f };
@@ -441,7 +441,7 @@ void EditTransform(glm::mat4 &model_matrix) {
       TransformSettings.Mode = ImGuizmoMode_Local;
     }
     ImGui::SameLine();
-    if (ImGui::RadioButton("Global",
+    if (ImGui::RadioButton("World",
                            TransformSettings.Mode == ImGuizmoMode_World)) {
       TransformSettings.Mode = ImGuizmoMode_World;
     }
@@ -514,8 +514,8 @@ int main(int argc, char *argv[]) {
 
   //CreateEntities(2);
   Scene.Entities.push_back(
-    { MaterialPresets["Ruby"],
-      glm::translate(IdentityMatrix, glm::vec3{ 0.0f, 1.0f, 0.0f }) });
+    { MaterialPresets["Turquoise"],
+      glm::translate(IdentityMatrix, glm::vec3{ 0.0f, 2.0f, 0.0f }) });
   CurrentEntity = &(*Scene.Entities.begin());
 
   SetupDebugCallback();
@@ -542,6 +542,7 @@ int main(int argc, char *argv[]) {
 
   ImGui::StyleColorsDark();
   ImGuizmo::StyleColorsBlender();
+  ImGuizmo::GetStyle().GizmoScale = 0.2f;
 
   // When viewports are enabled we tweak WindowRounding/WindowBg so platform
   // windows can look identical to regular ones.
@@ -554,8 +555,7 @@ int main(int argc, char *argv[]) {
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init();
 
-  glfwSwapInterval(1);
-
+  //glfwSwapInterval(1);
 
   float fov{ 60.0 };
 
@@ -582,16 +582,14 @@ int main(int argc, char *argv[]) {
         -view_width, view_width, -view_height,
                                      view_height, -1000.0f, 1000.0f);
     }
-    static float cam_distance{ 16.0f };
-
-    static glm::vec3 eye;
+    static float cam_distance{ 8.0f };
 
     static bool first_frame{ true };
-    static bool view_dirty{ false };
+    static bool view_dirty{ true };
     if (first_frame || view_dirty) {
-      const glm::vec3 at{ 0.0f, 0.0f, 0.0f };
+      const glm::vec3 at{ 0.0f, 2.0f, 0.0f };
       const glm::vec3 up{ 0.0f, 1.0f, 0.0f };
-      eye =
+      const glm::vec3 eye =
         glm::vec3{ glm::cos(cam_angle_y) * glm::cos(cam_angle_x) * cam_distance,
                    glm::sin(cam_angle_x) * cam_distance,
                    glm::sin(cam_angle_y) * glm::cos(cam_angle_x) *
@@ -602,7 +600,6 @@ int main(int argc, char *argv[]) {
     glm::mat4 inversed_camera_view{ glm::inverse(Scene.Camera.ViewMatrix) };
     glm::vec3 eye_pos = glm::vec3{ inversed_camera_view[2] } * cam_distance;
     glm::vec3 cam_dir = glm::normalize(glm::vec3{ 0.0f } - eye_pos);
-
     Scene.Camera.Eye = eye_pos;
 
     RenderScene();
@@ -616,7 +613,7 @@ int main(int argc, char *argv[]) {
     }
     ImGui::End();
 
-    if (ImGui::Begin("Test")) {
+    if (ImGui::Begin("ImGuizmo")) {
       ImGui::Text("ConfigFlags");
       static ImGuizmoConfigFlags config_flags{ 0 };
       ImGui::CheckboxFlags("CloakOnManipulate", &config_flags,
@@ -651,8 +648,10 @@ int main(int argc, char *argv[]) {
 
     if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
 
-    if (ImGui::Begin("ViewManip")) {
-      ImGuizmo::ViewManipulate(glm::value_ptr(Scene.Camera.ViewMatrix), cam_distance);
+    ImGui::SetNextWindowSize(glm::vec2{ 128 });
+    if (ImGui::Begin("View", nullptr, ImGuiWindowFlags_NoResize)) {
+      ImGuizmo::ViewManipulate(glm::value_ptr(Scene.Camera.ViewMatrix),
+                               cam_distance);
     }
     ImGui::End();
 

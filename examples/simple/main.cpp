@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   if (!glfwInit()) return 1;
-  glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+  glfwWindowHint(GLFW_MAXIMIZED, GLFW_FALSE);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
@@ -36,7 +36,6 @@ int main(int argc, char *argv[]) {
                                        nullptr) };
   if (window == nullptr) return 1;
   glfwMakeContextCurrent(window);
-  glfwSwapInterval(1);
 
   if (!gladLoadGL()) {
     fprintf(stderr, "Failed to initialize OpenGL loader!\n");
@@ -47,8 +46,6 @@ int main(int argc, char *argv[]) {
   ImGui::CreateContext();
   ImGuiIO &io{ ImGui::GetIO() };
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-  // io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
   io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
   io.ConfigWindowsMoveFromTitleBarOnly = true;
@@ -57,6 +54,7 @@ int main(int argc, char *argv[]) {
   io.ConfigViewportsNoTaskBarIcon = true;
 
   ImGui::StyleColorsDark();
+  ImGuizmo::StyleColorsUnreal();
 
   // When viewports are enabled we tweak WindowRounding/WindowBg so platform
   // windows can look identical to regular ones.
@@ -69,78 +67,71 @@ int main(int argc, char *argv[]) {
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init();
 
-  static glm::mat4 camera_projection{ 1.0f };
-  static glm::mat4 camera_view{ 1.0f };
-
-  float fov{ 60.0 };
-  float view_width{ 10.0f }; // for ortho projection
-  float cam_angle_y{ 165.0f / 180.0f * 3.14159f };
-  float cam_angle_x{ 32.0f / 180.0f * 3.14159f };
-
+  constexpr float cam_distance{ 8.0f };
+  constexpr float cam_angle_y { glm::radians(165.0f)};
+  constexpr float cam_angle_x{ glm::radians(32.0f) };
+  const glm::vec3 eye{
+    glm::cos(cam_angle_y) * glm::cos(cam_angle_x) * cam_distance,
+    glm::sin(cam_angle_x) * cam_distance,
+    glm::sin(cam_angle_y) * glm::cos(cam_angle_x) * cam_distance
+  };
+  const glm::vec3 at{ 0.0f, 0.0f, 0.0f };
+  const glm::vec3 up{ 0.0f, 1.0f, 0.0f };
+  static glm::mat4 view_matrix{ glm::lookAt(eye, at, up) };
+  static glm::mat4 projection_matrix{ 1.0f };
   static glm::mat4 model_matrix{ 1.0f };
 
-  bool show_demo_window{ true };
-  ImVec4 clear_color{ 0.45f, 0.55f, 0.60f, 1.00f };
-
+  const ImVec4 clear_color{ 0.45f, 0.55f, 0.60f, 1.00f };
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
 
     static glm::ivec2 framebuffer_size;
     glfwGetFramebufferSize(window, &framebuffer_size.x, &framebuffer_size.y);
-
-    float aspect_ratio =
-      static_cast<float>(framebuffer_size.x) / framebuffer_size.y;
-
-    static bool is_perspective{ true };
-    if (is_perspective) {
-      camera_projection =
-        glm::perspective(glm::radians(fov), aspect_ratio, 0.1f, 1000.0f);
-    } else {
-      const float view_height{ view_width * framebuffer_size.y /
-                               framebuffer_size.x };
-      camera_projection = glm::ortho(-view_width, view_width, -view_height,
-                                     view_height, -1000.0f, 1000.0f);
-    }
+    float aspect_ratio = static_cast<float>(framebuffer_size.x) /
+                         static_cast<float>(framebuffer_size.y);
+    projection_matrix =
+      glm::perspective(glm::radians(60.0f), aspect_ratio, 0.1f, 1000.0f);
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
-
     ImGuizmo::PrintContext();
 
-    static float cam_distance{ 8.0f };
-    static bool view_dirty{ false };
-    if (ImGui::Begin("Example")) {
-      ImGui::Text("Camera");
-      if (ImGui::RadioButton("Perspective", is_perspective))
-        is_perspective = true;
-      ImGui::SameLine();
-      if (ImGui::RadioButton("Orthographic", !is_perspective))
-        is_perspective = false;
-      if (is_perspective) {
-        ImGui::SliderFloat("FOV", &fov, 20.0f, 120.f);
-      } else {
-        ImGui::SliderFloat("Ortho width", &view_width, 1, 20);
+    static ImGuizmoMode mode{ ImGuizmoMode_Local };
+    static ImGuizmoOperation operation{ ImGuizmoOperation_Translate };
+    if (ImGui::Begin("ImGuizmo")) {
+      if (ImGui::IsKeyPressed(GLFW_KEY_W))
+        operation = ImGuizmoOperation_Translate;
+      if (ImGui::IsKeyPressed(GLFW_KEY_E)) operation = ImGuizmoOperation_Rotate;
+      if (ImGui::IsKeyPressed(GLFW_KEY_R)) operation = ImGuizmoOperation_Scale;
+
+      if (ImGui::RadioButton("Translate",
+                             operation == ImGuizmoOperation_Translate)) {
+        operation = ImGuizmoOperation_Translate;
       }
-      view_dirty = ImGui::InputFloat("Distance", &cam_distance, 1.0f);
+      ImGui::SameLine();
+      if (ImGui::RadioButton("Rotate", operation == ImGuizmoOperation_Rotate)) {
+        operation = ImGuizmoOperation_Rotate;
+      }
+      ImGui::SameLine();
+      if (ImGui::RadioButton("Scale", operation == ImGuizmoOperation_Scale)) {
+        operation = ImGuizmoOperation_Scale;
+      }
+
+      if (operation != ImGuizmoOperation_Scale) {
+        if (ImGui::RadioButton("Local", mode == ImGuizmoMode_Local)) {
+          mode = ImGuizmoMode_Local;
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Global", mode == ImGuizmoMode_World)) {
+          mode = ImGuizmoMode_World;
+        }
+      } else {
+        mode = ImGuizmoMode_Local;
+      }
     }
     ImGui::End();
-
-    static bool first_frame{ true };
-    if (view_dirty || first_frame) {
-      const glm::vec3 eye{
-        glm::cos(cam_angle_y) * glm::cos(cam_angle_x) * cam_distance,
-        glm::sin(cam_angle_x) * cam_distance,
-        glm::sin(cam_angle_y) * glm::cos(cam_angle_x) * cam_distance
-      };
-      const glm::vec3 at{ 0.0f, 0.0f, 0.0f };
-      const glm::vec3 up{ 0.0f, 1.0f, 0.0f };
-      camera_view = glm::lookAt(eye, at, up);
-
-      first_frame = false;
-    }
 
     static const ImGuiViewport *main_viewport{ ImGui::GetMainViewport() };
     ImGui::SetNextWindowPos(main_viewport->Pos);
@@ -157,12 +148,8 @@ int main(int argc, char *argv[]) {
                                       ImGuiWindowFlags_NoBringToFrontOnFocus };
 
     if (ImGui::Begin("Canvas", nullptr, window_flags)) {
-      ImGuizmo::SetCamera(glm::value_ptr(camera_view),
-                          glm::value_ptr(camera_projection), !is_perspective);
-
-      static ImGuizmoMode mode{ ImGuizmoMode_World };
-      static ImGuizmoOperation operation{ ImGuizmoOperation_Translate };
-
+      ImGuizmo::SetCamera(glm::value_ptr(view_matrix),
+                          glm::value_ptr(projection_matrix), false);
 #if _PROFILE_CODE
       auto start = std::chrono::high_resolution_clock::now();
 #endif
@@ -190,29 +177,15 @@ int main(int argc, char *argv[]) {
         ImGui::Text("Manipulate() = ~%ld microseconds", avg_time);
       ImGui::End();
 #endif
+      constexpr float manip_size{ 128.0f };
+      glm::vec2 position{ main_viewport->Pos };
+      position.x += main_viewport->Size.x - manip_size;
+      ImGuizmo::ViewManipulate(glm::value_ptr(view_matrix), cam_distance,
+                               position, glm::vec2{ manip_size }, 0x10101010);
     }
     ImGui::End();
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(2);
-
-    constexpr auto view_size = 256;
-    ImGui::SetNextWindowSize(glm::vec2{ view_size } + glm::vec2{ 0, 20 });
-    if (ImGui::Begin("ViewManipulate", nullptr, ImGuiWindowFlags_NoResize)) {
-      // position = ImGui::GetCurrentWindow()->Viewport->Pos;
-      // size = ImGui::GetCurrentWindow()->Viewport->Size;
-      // glm::vec2{ position.x + size.x - kViewSize, position.y }
-
-      const glm::vec2 position{ glm::vec2{ ImGui::GetWindowPos() } +
-                                glm::vec2{ 0, 20 } };
-#if 0
-      ImGuizmo::ViewManip(glm::value_ptr(cameraView), camDistance,
-                               position, glm::vec2{ kViewSize });
-#else
-      ImGuizmo::ViewManipulate(glm::value_ptr(camera_view), cam_distance,
-                               position, glm::vec2{ view_size }, 0x10101010);
-#endif
-    }
-    ImGui::End();
 
     ImGui::Render();
 

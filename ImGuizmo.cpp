@@ -1704,7 +1704,8 @@ bool End() {
   ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
   IM_ASSERT(g.LockedModelMatrix && "It seems that you didn't call Begin()");
 
-  if (ImGui::GetIO().MouseClicked[1] && gizmo->ActiveManipulationFlags) {
+  if (g.ConfigFlags & ImGuizmoConfigFlags_HasReversing &&
+      ImGui::GetIO().MouseClicked[1] && gizmo->ActiveManipulationFlags) {
     gizmo->ModelMatrix = g.BackupModelMatrix;
     gizmo->Dirty = true;
     gizmo->ActiveManipulationFlags = ImGuizmoAxisFlags_None;
@@ -1790,6 +1791,8 @@ void Scale(const float *snap) {
       !(g.ConfigFlags & ImGuizmoConfigFlags_CloakOnManipulate)) {
     for (int axis = 0; axis < 3; ++axis)
       RenderScaleAxis(axis, hover_flags);
+    //for (int plane = 0; plane < 3; ++plane)
+    //  RenderPlane(plane, hover_flags);
     RenderCore(hover_flags);
   }
 
@@ -1816,11 +1819,13 @@ static bool ViewManipBehavior(bool hovered, bool *out_held) {
   return pressed;
 }
 
-void ViewManipulate(float *view, const float length, ImU32 background_color) {
+void ViewManipulate(float *view, const float length, const ImVec2 &position,
+                    const ImVec2 &size, ImU32 background_color) {
   const ImGuiIO &io{ ImGui::GetIO() };
   ImDrawList *draw_list{ ImGui::GetWindowDrawList() };
 
-  const ImRect bb{ CalcViewport() };
+  //background_color = 0xFFFFFFFF;
+  const ImRect bb{ position, position + size };
   draw_list->AddRectFilled(bb.Min, bb.Max, background_color);
 
   // ---
@@ -2013,6 +2018,11 @@ void ViewManipulate(float *view, const float length, ImU32 background_color) {
         glm::lookAt(new_eye, target_pos, kReferenceUp);
     }
   }
+}
+
+void ViewManipulate(float *view, const float length, ImU32 background_color) {
+  ImRect bb{ CalcViewport() };
+  ViewManipulate(view, length, bb.GetTL(), bb.GetSize(), background_color);
 }
 
 void DecomposeMatrix(const float *matrix, float *translation, float *rotation,

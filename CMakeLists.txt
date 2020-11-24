@@ -44,7 +44,7 @@ target_compile_definitions(ImGuizmo
 target_include_directories(ImGuizmo PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(ImGuizmo
 	PUBLIC
-		imgui
+	  imgui
 	PRIVATE
 		glm::glm
 )

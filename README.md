@@ -1,6 +1,8 @@
 ### ImGuizmo
 
-#### Usage
+![sample code output (classic)](https://github.com/skaarj1989/ImGuizmo/blob/gh-pages/example.gif?raw=true)
+
+#### Gizmo tools
 
 Gizmo must be created inside of target window (e.g *Scene Window*)
 
@@ -40,6 +42,25 @@ ImGui::PopStyleVar();
 ImGui::PopStyleColor(2);
 ```
 
+#### View manipulator
+
+```cpp
+// Use whole window
+ImGui::SetNextWindowSize(glm::vec2{ 256 });
+if (ImGui::Begin("View", nullptr, ImGuiWindowFlags_NoResize)) {
+  ImGuizmo::ViewManipulate(view_matrix, cam_distance);
+}
+ImGui::End();
+```
+
+```cpp
+// Use part of window (top-right)
+constexpr ImVec2 manip_size{ 128, 128 };
+ImVec2 position{ main_viewport->Pos };
+position.x += main_viewport->Size.x - manip_size.x;
+ImGuizmo::ViewManipulate(view_matrix, cam_distance, position, manip_size);
+```
+
 #### Build examples
 ```bash
 mkdir build && cd build
@@ -52,14 +73,14 @@ Copy `ImGuizmo.h` and `ImGuizmo.cpp` into folder with **imgui**
 
 #### Customization
 
+You can modify colors and scale.
+
+_Predefined themes:_`StyleColorsClassic()` `StyleColorsBlender()` `StyleColorsUnreal()`
 <br>![sample code output (classic)](https://raw.githubusercontent.com/skaarj1989/ImGuizmo/gh-pages/images/classic.png) ![sample code output (blender)](https://raw.githubusercontent.com/skaarj1989/ImGuizmo/gh-pages/images/blender.png) ![sample code output (unreal)](https://raw.githubusercontent.com/skaarj1989/ImGuizmo/gh-pages/images/unreal.png)
-_Themes:_`StyleColorsClassic()` `StyleColorsBlender()` `StyleColorsUnreal()`
 
-#### Features
-
-Available via `SetConfigFlags()`
+Change behavior via `SetConfigFlags()`
 * Reverse operation on right mouse button click
-* 
+* Hide gizmo on use
 * Lock axes (only for translate and rotate for now)
 
 ### License
