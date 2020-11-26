@@ -557,7 +557,7 @@ int main(int argc, char *argv[]) {
   constexpr float cam_angle_y{ glm::radians(235.0f) };
   constexpr float cam_angle_x{ glm::radians(140.0f) };
 
-  bool show_demo_window{ false };
+  bool show_demo_window{ true };
 
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
@@ -669,6 +669,9 @@ int main(int argc, char *argv[]) {
                             TransformSettings.LockedAxes)) {
           const float *snap{ TransformSettings.UseSnap ? TransformSettings.Snap
                                                        : nullptr };
+         
+
+
           switch (TransformSettings.Operation) {
           case ImGuizmoOperation_Translate:
             ImGuizmo::Translate(snap);
@@ -680,6 +683,11 @@ int main(int argc, char *argv[]) {
             ImGuizmo::Scale(snap);
             break;
           }
+
+          static float bound_snap[]{ 0.1f, 0.1f, 0.1f };
+          static float bounds[]{ -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f };
+          ImGuizmo::BoundsScale(bounds, TransformSettings.UseSnap ? bound_snap
+                                                                  : nullptr);
         }
         ImGuizmo::End();
       }

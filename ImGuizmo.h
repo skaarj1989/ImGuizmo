@@ -70,6 +70,7 @@ enum ImGuizmoOperation_ {
   ImGuizmoOperation_Translate,
   ImGuizmoOperation_Rotate,
   ImGuizmoOperation_Scale,
+  ImGuizmoOperation_BoundsScale,
 };
 using ImGuizmoOperation = int;
 
@@ -153,7 +154,7 @@ IMGUI_API void Rotate(const float *snap = nullptr);
 IMGUI_API void Scale(const float *snap = nullptr);
 
 /** @param snap */
-IMGUI_API void Cage(const float *bounds, const float *snap);
+IMGUI_API void BoundsScale(const float *bounds, const float *snap = nullptr);
 
 /**
  * @note Please note that this cubeview is patented by Autodesk:

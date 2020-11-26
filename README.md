@@ -87,6 +87,18 @@ Change behavior via `SetConfigFlags()`
 * Hide gizmo on use
 * Lock axes (only for translate and rotate for now)
 
+Build your gizmo from blocks:
+```cpp
+Translate();
+Rotate();
+Scale();
+BoundsScale();
+```
+
+#### Refactoring
+- Replaced custom math with **glm**
+- Reduced cognitive complexity
+
 ### License
 
 ImGuizmo is licensed under the MIT License, see LICENSE for more information.

@@ -1,4 +1,4 @@
-#define _PROFILE_CODE 0
+#define _PROFILE_CODE 1
 #if _PROFILE_CODE
 #  include <algorithm>
 #  include <array>
@@ -153,6 +153,13 @@ int main(int argc, char *argv[]) {
 #if _PROFILE_CODE
       auto start = std::chrono::high_resolution_clock::now();
 #endif
+      /*
+      static float bound_snap[]{ 0.1f, 0.1f, 0.1f };
+      static float bounds[]{ -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f };
+      ImGuizmo::Begin(ImGuizmoMode_World, glm::value_ptr(model_matrix));
+      ImGuizmo::BoundsScale(bounds);
+      ImGuizmo::End();
+      */
       ImGuizmo::Manipulate(mode, operation, glm::value_ptr(model_matrix));
 #if _PROFILE_CODE
       auto finish = std::chrono::high_resolution_clock::now();
