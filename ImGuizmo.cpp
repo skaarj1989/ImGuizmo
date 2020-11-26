@@ -1586,7 +1586,6 @@ void CalcMidPoints() {
   ImGuizmoContext &g{ GImGuizmo };
   for (int plane_idx = 0; plane_idx < 3; ++plane_idx) {
     for (int i = 0; i < 4; ++i) {
-
       g.Bounds.MidPoints[plane_idx][i] =
         (g.Bounds.OutterPoints[plane_idx][i] +
          g.Bounds.OutterPoints[plane_idx][(i + 1) % 4]) *
