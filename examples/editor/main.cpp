@@ -420,6 +420,7 @@ void EditTransform(glm::mat4 &model_matrix) {
     TransformSettings.Operation = ImGuizmoOperation_Scale;
   }
 
+  #if 1
   static float translation[3], rotation[3], scale[3];
   ImGuizmo::DecomposeMatrix(glm::value_ptr(model_matrix),
                             translation, rotation, scale);
@@ -432,6 +433,7 @@ void EditTransform(glm::mat4 &model_matrix) {
     ImGuizmo::RecomposeMatrix(translation, rotation, scale,
                               glm::value_ptr(model_matrix));
   }
+  #endif
 
   if (TransformSettings.Operation != ImGuizmoOperation_Scale) {
     if (ImGui::RadioButton("Local",
@@ -490,6 +492,7 @@ int main(int argc, char *argv[]) {
   _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
   _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif
+
 
   if (!glfwInit()) return 1;
   glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
