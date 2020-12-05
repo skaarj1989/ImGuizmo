@@ -188,8 +188,8 @@ struct ImGuizmoContext {
 
   ImGuizmoBounds Bounds;
 
-  float PlanesVisibility[3]{ 0.0f }; // 0 = invisible, 1 = most visible
-  ImGuizmoPlane MostVisiblePlanes[3]{ 0, 1, 2 };
+  float PlanesVisibility[3]{ 0.0f }; // local planes, 0 = invisible, 1 = most visible
+  ImGuizmoPlane MostVisiblePlanes[3]{ 0, 1, 2 }; // local planes
 
   float *LockedModelMatrix{ nullptr };
   glm::mat4 BackupModelMatrix{ 1.0f }; // For reverting operation
@@ -402,6 +402,9 @@ static glm::vec2 WorldToScreen(const glm::vec3 &world_pos,
 
 static ImGuizmoRay RayCast(const glm::mat4 &view_proj_matrix,
                            const ImRect &bb) {
+  // https://antongerdelan.net/opengl/raycasting.html
+  // https://github.com/opengl-tutorials/ogl/blob/master/misc05_picking/misc05_picking_custom.cpp
+
   glm::vec2 mouse_pos{ ImGui::GetIO().MousePos };
   // Convert to NDC
   mouse_pos =
@@ -410,10 +413,10 @@ static ImGuizmoRay RayCast(const glm::mat4 &view_proj_matrix,
 
   const glm::mat4 inversed_view_proj{ glm::inverse(view_proj_matrix) };
   glm::vec4 ray_origin_world_space{ inversed_view_proj *
-                                    glm::vec4{ mouse_pos, 0.0f, 1.0f } };
+                                    glm::vec4{ mouse_pos, -1.0f, 1.0f } };
   ray_origin_world_space *= 1.0f / ray_origin_world_space.w;
   glm::vec4 ray_end_world_space{
-    inversed_view_proj * glm::vec4{ mouse_pos, 1.0f - kEpsilon, 1.0f }
+    inversed_view_proj * glm::vec4{ mouse_pos, 0.0f, 1.0f }
   };
   ray_end_world_space *= 1.0f / ray_end_world_space.w;
   return ImGuizmoRay{ ray_origin_world_space, ray_end_world_space,
@@ -797,6 +800,16 @@ static bool IsRotationRingHovered() {
 // [SECTION]
 //-----------------------------------------------------------------------------
 
+static float CalculatePlaneVisibility(ImGuizmoPlane plane_idx, bool local) {
+  const ImGuizmoContext &g{ GImGuizmo };
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  const auto &matrix = local ? gizmo->SourceModelMatrix : gizmo->ModelMatrix;
+  const glm::vec3 plane_normal{ glm::normalize(
+    matrix * glm::vec4{ kUnitDirections[plane_idx], 0.0f }) };
+  return glm::abs(
+    glm::dot(glm::normalize(g.Camera.Eye - matrix[3].xyz), plane_normal));
+}
 static bool IsAxisVisible(ImGuizmoAxis axis_idx) {
   const ImGuizmoContext &g{ GImGuizmo };
   const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
@@ -806,9 +819,14 @@ static bool IsAxisVisible(ImGuizmoAxis axis_idx) {
     glm::vec3{ 0.0f }, kUnitDirections[axis_idx] * gizmo->ScreenFactor) };
   return axis_length >= visibility_threshold;
 }
-static bool IsPlaneVisible(ImGuizmoPlane plane_idx) {
-  constexpr float visibility_threshold{ 0.1f };
-  return GImGuizmo.PlanesVisibility[plane_idx] >= visibility_threshold;
+static bool IsPlaneVisible(ImGuizmoPlane plane_idx, bool local = true) {
+  const ImGuizmoContext &g{ GImGuizmo };
+  const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
+
+  constexpr float threshold{ 0.2f };
+  const float visibility{ local ? GImGuizmo.PlanesVisibility[plane_idx]
+                                : CalculatePlaneVisibility(plane_idx, false) };
+  return visibility >= threshold;
 }
 
 //-----------------------------------------------------------------------------
@@ -912,7 +930,7 @@ static void RenderPlane(ImGuizmoPlane plane_idx,
   const ImGuizmoWidget *gizmo{ GetCurrentGizmo() };
 
   // @todo Or maybe multiply alpha by PlaneVisibility? (blender-like behavior)
-  if (!IsPlaneVisible(plane_idx)) return;
+  if (!IsPlaneVisible(plane_idx, gizmo->Mode == ImGuizmoMode_Local)) return;
 
   if (g.ConfigFlags & ImGuizmoConfigFlags_HideLocked &&
       gizmo->LockedAxesFlags & PlaneToFlags(plane_idx))
@@ -1916,14 +1934,9 @@ bool Begin(ImGuizmoMode mode, float *model_matrix,
   gizmo->LockedAxesFlags = locked_axes;
   g.Ray = RayCast(g.Camera.ViewProjectionMatrix);
 
-  for (int plane_idx = 0; plane_idx < 3; ++plane_idx) {
-    const glm::vec3 plane_normal{ glm::normalize(
-      gizmo->SourceModelMatrix *
-      glm::vec4{ kUnitDirections[plane_idx], 0.0f }) };
-    g.PlanesVisibility[plane_idx] = glm::abs(
-      glm::dot(glm::normalize(g.Camera.Eye - gizmo->SourceModelMatrix[3].xyz),
-               plane_normal));
-  }
+  for (int plane_idx = 0; plane_idx < 3; ++plane_idx)
+    g.PlanesVisibility[plane_idx] = CalculatePlaneVisibility(plane_idx, true);
+  
   ImQsort(g.MostVisiblePlanes, 3, sizeof(ImGuizmoPlane),
           [](const void *a, const void *b) {
             const ImGuizmoContext &g{ GImGuizmo };
